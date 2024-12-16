@@ -1,0 +1,562 @@
+[
+  {
+    "partID": "20Y5311G24010001",
+    "partName": "Bill 1",
+    "customer": "Customer 1",
+    "job": "TESBOM",
+    "date": "2024-11-07",
+    "quantity": 999, 
+    "image": "/img/product_img1.png",
+    "inventory": [
+      {
+        "id": "20Y5311G24",
+        "date_time": "2024-10-28 15:15:30",
+        "quantity_sold": 24,
+        "quantity_remaining": 76, 
+        "job": "NOT PROJECT'D'M.10X1.25",
+        "plan_id": "PPDF-024",
+        "signature": "Nattanon"
+      },
+      {
+        "id": "20Y5311G24",
+        "date_time": "2024-10-28 11:32:12",
+        "quantity_sold": 24,
+        "quantity_remaining": 52, 
+        "job": "NOT PROJECT'D'M.10X1.25",
+        "plan_id": "PPDF-237",
+        "signature": "Nattanon"
+      },
+      {
+        "id": "20Y5311G24",
+        "date_time": "2024-10-28 11:32:12",
+        "quantity_sold": 24,
+        "quantity_remaining": 28, 
+        "job": "NOT PROJECT'D'M.10X1.25",
+        "plan_id": "207A08",
+        "signature": "Nattanon"
+      },
+      {
+        "id": "20Y5311G24",
+        "date_time": "2024-10-28 11:32:12",
+        "quantity_sold": 24,
+        "quantity_remaining": 4, 
+        "job": "NOT PROJECT'D'M.10X1.25",
+        "plan_id": "2A03F068",
+        "signature": "Nattanon"
+      },
+      {
+        "id": "20Y5311G24",
+        "date_time": "2024-10-28 11:29:56",
+        "quantity_sold": 4,
+        "quantity_remaining": 0, 
+        "job": "NOT PROJECT'D'M.10X1.25",
+        "plan_id": "2A04F097",
+        "signature": "Nattanon"
+      }
+    ]
+  },
+  {
+    "partID": "20Y5311G24010002",
+    "partName": "Bill 2",
+    "customer": "Customer 2",
+    "job": "TESBOM",
+    "date": "2024-11-07",
+    "quantity": 100, 
+    "image": "/img/product_img1.png",
+    "inventory": [
+      {
+        "id": "20Y5311G24",
+        "date_time": "2024-10-28 15:15:30",
+        "quantity_sold": 24,
+        "quantity_remaining": 76, 
+        "job": "NOT PROJECT'D'M.10X1.25",
+        "plan_id": "PPDF-024",
+        "signature": "Nattanon"
+      },
+      {
+        "id": "20Y5311G24",
+        "date_time": "2024-10-28 11:32:12",
+        "quantity_sold": 24,
+        "quantity_remaining": 52, 
+        "job": "NOT PROJECT'D'M.10X1.25",
+        "plan_id": "PPDF-237",
+        "signature": "Nattanon"
+      },
+      {
+        "id": "20Y5311G24",
+        "date_time": "2024-10-28 11:32:12",
+        "quantity_sold": 24,
+        "quantity_remaining": 28, 
+        "job": "NOT PROJECT'D'M.10X1.25",
+        "plan_id": "207A08",
+        "signature": "Nattanon"
+      },
+      {
+        "id": "20Y5311G24",
+        "date_time": "2024-10-28 11:32:12",
+        "quantity_sold": 24,
+        "quantity_remaining": 4, 
+        "job": "NOT PROJECT'D'M.10X1.25",
+        "plan_id": "2A03F068",
+        "signature": "Nattanon"
+      },
+      {
+        "id": "20Y5311G24",
+        "date_time": "2024-10-28 11:29:56",
+        "quantity_sold": 4,
+        "quantity_remaining": 0, 
+        "job": "NOT PROJECT'D'M.10X1.25",
+        "plan_id": "2A04F097",
+        "signature": "Nattanon"
+      }
+    ]
+  },
+  {
+    "partID": "20Y5311G24010003",
+    "partName": "Bill 3",
+    "customer": "Customer 3",
+    "job": "TESBOM",
+    "date": "2024-11-07",
+    "quantity": 500, 
+    "image": "/img/product_img1.png",
+    "inventory": [
+      {
+        "id": "20Y5311G24",
+        "date_time": "2024-10-28 15:15:30",
+        "quantity_sold": 24,
+        "quantity_remaining": 76, 
+        "job": "NOT PROJECT'D'M.10X1.25",
+        "plan_id": "PPDF-024",
+        "signature": "Nattanon"
+      },
+      {
+        "id": "20Y5311G24",
+        "date_time": "2024-10-28 11:32:12",
+        "quantity_sold": 24,
+        "quantity_remaining": 52, 
+        "job": "NOT PROJECT'D'M.10X1.25",
+        "plan_id": "PPDF-237",
+        "signature": "Nattanon"
+      },
+      {
+        "id": "20Y5311G24",
+        "date_time": "2024-10-28 11:32:12",
+        "quantity_sold": 24,
+        "quantity_remaining": 28, 
+        "job": "NOT PROJECT'D'M.10X1.25",
+        "plan_id": "207A08",
+        "signature": "Nattanon"
+      },
+      {
+        "id": "20Y5311G24",
+        "date_time": "2024-10-28 11:32:12",
+        "quantity_sold": 24,
+        "quantity_remaining": 4, 
+        "job": "NOT PROJECT'D'M.10X1.25",
+        "plan_id": "2A03F068",
+        "signature": "Nattanon"
+      },
+      {
+        "id": "20Y5311G24",
+        "date_time": "2024-10-28 11:29:56",
+        "quantity_sold": 4,
+        "quantity_remaining": 0, 
+        "job": "NOT PROJECT'D'M.10X1.25",
+        "plan_id": "2A04F097",
+        "signature": "Nattanon"
+      }
+    ]
+  },
+  {
+    "partID": "20Y5311G24010004",
+    "partName": "Bill 4",
+    "customer": "Customer 4",
+    "job": "TESBOM",
+    "date": "2024-11-07",
+    "quantity": 600, 
+    "image": "/img/product_img1.png",
+    "inventory": [
+      {
+        "id": "20Y5311G24",
+        "date_time": "2024-10-28 15:15:30",
+        "quantity_sold": 24,
+        "quantity_remaining": 76, 
+        "job": "NOT PROJECT'D'M.10X1.25",
+        "plan_id": "PPDF-024",
+        "signature": "Nattanon"
+      },
+      {
+        "id": "20Y5311G24",
+        "date_time": "2024-10-28 11:32:12",
+        "quantity_sold": 24,
+        "quantity_remaining": 52, 
+        "job": "NOT PROJECT'D'M.10X1.25",
+        "plan_id": "PPDF-237",
+        "signature": "Nattanon"
+      },
+      {
+        "id": "20Y5311G24",
+        "date_time": "2024-10-28 11:32:12",
+        "quantity_sold": 24,
+        "quantity_remaining": 28, 
+        "job": "NOT PROJECT'D'M.10X1.25",
+        "plan_id": "207A08",
+        "signature": "Nattanon"
+      },
+      {
+        "id": "20Y5311G24",
+        "date_time": "2024-10-28 11:32:12",
+        "quantity_sold": 24,
+        "quantity_remaining": 4, 
+        "job": "NOT PROJECT'D'M.10X1.25",
+        "plan_id": "2A03F068",
+        "signature": "Nattanon"
+      },
+      {
+        "id": "20Y5311G24",
+        "date_time": "2024-10-28 11:29:56",
+        "quantity_sold": 4,
+        "quantity_remaining": 0, 
+        "job": "NOT PROJECT'D'M.10X1.25",
+        "plan_id": "2A04F097",
+        "signature": "Nattanon"
+      }
+    ]
+  },
+  {
+    "partID": "20Y5311G24010005",
+    "partName": "Bill 5",
+    "customer": "Customer 5",
+    "job": "TESBOM",
+    "date": "2024-11-07",
+    "quantity": 999, 
+    "image": "/img/product_img1.png",
+    "inventory": [
+      {
+        "id": "20Y5311G24",
+        "date_time": "2024-10-28 15:15:30",
+        "quantity_sold": 24,
+        "quantity_remaining": 76, 
+        "job": "NOT PROJECT'D'M.10X1.25",
+        "plan_id": "PPDF-024",
+        "signature": "Nattanon"
+      },
+      {
+        "id": "20Y5311G24",
+        "date_time": "2024-10-28 11:32:12",
+        "quantity_sold": 24,
+        "quantity_remaining": 52, 
+        "job": "NOT PROJECT'D'M.10X1.25",
+        "plan_id": "PPDF-237",
+        "signature": "Nattanon"
+      },
+      {
+        "id": "20Y5311G24",
+        "date_time": "2024-10-28 11:32:12",
+        "quantity_sold": 24,
+        "quantity_remaining": 28, 
+        "job": "NOT PROJECT'D'M.10X1.25",
+        "plan_id": "207A08",
+        "signature": "Nattanon"
+      },
+      {
+        "id": "20Y5311G24",
+        "date_time": "2024-10-28 11:32:12",
+        "quantity_sold": 24,
+        "quantity_remaining": 4, 
+        "job": "NOT PROJECT'D'M.10X1.25",
+        "plan_id": "2A03F068",
+        "signature": "Nattanon"
+      },
+      {
+        "id": "20Y5311G24",
+        "date_time": "2024-10-28 11:29:56",
+        "quantity_sold": 4,
+        "quantity_remaining": 0, 
+        "job": "NOT PROJECT'D'M.10X1.25",
+        "plan_id": "2A04F097",
+        "signature": "Nattanon"
+      }
+    ]
+  },
+  {
+    "partID": "20Y5311G24010006",
+    "partName": "Bill 6",
+    "customer": "Customer 6",
+    "job": "TESBOM",
+    "date": "2024-11-07",
+    "quantity": 999, 
+    "image": "/img/product_img1.png",
+    "inventory": [
+      {
+        "id": "20Y5311G24",
+        "date_time": "2024-10-28 15:15:30",
+        "quantity_sold": 24,
+        "quantity_remaining": 76, 
+        "job": "NOT PROJECT'D'M.10X1.25",
+        "plan_id": "PPDF-024",
+        "signature": "Nattanon"
+      },
+      {
+        "id": "20Y5311G24",
+        "date_time": "2024-10-28 11:32:12",
+        "quantity_sold": 24,
+        "quantity_remaining": 52, 
+        "job": "NOT PROJECT'D'M.10X1.25",
+        "plan_id": "PPDF-237",
+        "signature": "Nattanon"
+      },
+      {
+        "id": "20Y5311G24",
+        "date_time": "2024-10-28 11:32:12",
+        "quantity_sold": 24,
+        "quantity_remaining": 28, 
+        "job": "NOT PROJECT'D'M.10X1.25",
+        "plan_id": "207A08",
+        "signature": "Nattanon"
+      },
+      {
+        "id": "20Y5311G24",
+        "date_time": "2024-10-28 11:32:12",
+        "quantity_sold": 24,
+        "quantity_remaining": 4, 
+        "job": "NOT PROJECT'D'M.10X1.25",
+        "plan_id": "2A03F068",
+        "signature": "Nattanon"
+      },
+      {
+        "id": "20Y5311G24",
+        "date_time": "2024-10-28 11:29:56",
+        "quantity_sold": 4,
+        "quantity_remaining": 0, 
+        "job": "NOT PROJECT'D'M.10X1.25",
+        "plan_id": "2A04F097",
+        "signature": "Nattanon"
+      }
+    ]
+  },
+  {
+    "partID": "20Y5311G24010007",
+    "partName": "Bill 7",
+    "customer": "Customer 7",
+    "job": "TESBOM",
+    "date": "2024-11-07",
+    "quantity": 999, 
+    "image": "/img/product_img1.png",
+    "inventory": [
+      {
+        "id": "20Y5311G24",
+        "date_time": "2024-10-28 15:15:30",
+        "quantity_sold": 24,
+        "quantity_remaining": 76, 
+        "job": "NOT PROJECT'D'M.10X1.25",
+        "plan_id": "PPDF-024",
+        "signature": "Nattanon"
+      },
+      {
+        "id": "20Y5311G24",
+        "date_time": "2024-10-28 11:32:12",
+        "quantity_sold": 24,
+        "quantity_remaining": 52, 
+        "job": "NOT PROJECT'D'M.10X1.25",
+        "plan_id": "PPDF-237",
+        "signature": "Nattanon"
+      },
+      {
+        "id": "20Y5311G24",
+        "date_time": "2024-10-28 11:32:12",
+        "quantity_sold": 24,
+        "quantity_remaining": 28, 
+        "job": "NOT PROJECT'D'M.10X1.25",
+        "plan_id": "207A08",
+        "signature": "Nattanon"
+      },
+      {
+        "id": "20Y5311G24",
+        "date_time": "2024-10-28 11:32:12",
+        "quantity_sold": 24,
+        "quantity_remaining": 4, 
+        "job": "NOT PROJECT'D'M.10X1.25",
+        "plan_id": "2A03F068",
+        "signature": "Nattanon"
+      },
+      {
+        "id": "20Y5311G24",
+        "date_time": "2024-10-28 11:29:56",
+        "quantity_sold": 4,
+        "quantity_remaining": 0, 
+        "job": "NOT PROJECT'D'M.10X1.25",
+        "plan_id": "2A04F097",
+        "signature": "Nattanon"
+      }
+    ]
+  },
+  {
+    "partID": "20Y5311G24010008",
+    "partName": "Bill 8",
+    "customer": "Customer 8",
+    "job": "TESBOM",
+    "date": "2024-11-07",
+    "quantity": 999, 
+    "image": "/img/product_img1.png",
+    "inventory": [
+      {
+        "id": "20Y5311G24",
+        "date_time": "2024-10-28 15:15:30",
+        "quantity_sold": 24,
+        "quantity_remaining": 76, 
+        "job": "NOT PROJECT'D'M.10X1.25",
+        "plan_id": "PPDF-024",
+        "signature": "Nattanon"
+      },
+      {
+        "id": "20Y5311G24",
+        "date_time": "2024-10-28 11:32:12",
+        "quantity_sold": 24,
+        "quantity_remaining": 52, 
+        "job": "NOT PROJECT'D'M.10X1.25",
+        "plan_id": "PPDF-237",
+        "signature": "Nattanon"
+      },
+      {
+        "id": "20Y5311G24",
+        "date_time": "2024-10-28 11:32:12",
+        "quantity_sold": 24,
+        "quantity_remaining": 28, 
+        "job": "NOT PROJECT'D'M.10X1.25",
+        "plan_id": "207A08",
+        "signature": "Nattanon"
+      },
+      {
+        "id": "20Y5311G24",
+        "date_time": "2024-10-28 11:32:12",
+        "quantity_sold": 24,
+        "quantity_remaining": 4, 
+        "job": "NOT PROJECT'D'M.10X1.25",
+        "plan_id": "2A03F068",
+        "signature": "Nattanon"
+      },
+      {
+        "id": "20Y5311G24",
+        "date_time": "2024-10-28 11:29:56",
+        "quantity_sold": 4,
+        "quantity_remaining": 0, 
+        "job": "NOT PROJECT'D'M.10X1.25",
+        "plan_id": "2A04F097",
+        "signature": "Nattanon"
+      }
+    ]
+  },
+  {
+    "partID": "20Y5311G24010009",
+    "partName": "Bill 9",
+    "customer": "Customer 9",
+    "job": "TESBOM",
+    "date": "2024-11-07",
+    "quantity": 999, 
+    "image": "/img/product_img1.png",
+    "inventory": [
+      {
+        "id": "20Y5311G24",
+        "date_time": "2024-10-28 15:15:30",
+        "quantity_sold": 24,
+        "quantity_remaining": 76, 
+        "job": "NOT PROJECT'D'M.10X1.25",
+        "plan_id": "PPDF-024",
+        "signature": "Nattanon"
+      },
+      {
+        "id": "20Y5311G24",
+        "date_time": "2024-10-28 11:32:12",
+        "quantity_sold": 24,
+        "quantity_remaining": 52, 
+        "job": "NOT PROJECT'D'M.10X1.25",
+        "plan_id": "PPDF-237",
+        "signature": "Nattanon"
+      },
+      {
+        "id": "20Y5311G24",
+        "date_time": "2024-10-28 11:32:12",
+        "quantity_sold": 24,
+        "quantity_remaining": 28, 
+        "job": "NOT PROJECT'D'M.10X1.25",
+        "plan_id": "207A08",
+        "signature": "Nattanon"
+      },
+      {
+        "id": "20Y5311G24",
+        "date_time": "2024-10-28 11:32:12",
+        "quantity_sold": 24,
+        "quantity_remaining": 4, 
+        "job": "NOT PROJECT'D'M.10X1.25",
+        "plan_id": "2A03F068",
+        "signature": "Nattanon"
+      },
+      {
+        "id": "20Y5311G24",
+        "date_time": "2024-10-28 11:29:56",
+        "quantity_sold": 4,
+        "quantity_remaining": 0, 
+        "job": "NOT PROJECT'D'M.10X1.25",
+        "plan_id": "2A04F097",
+        "signature": "Nattanon"
+      }
+    ]
+  },
+  {
+    "partID": "20Y5311G24010010",
+    "partName": "Bill 10",
+    "customer": "Customer 10",
+    "job": "TESBOM",
+    "date": "2024-11-07",
+    "quantity": 999, 
+    "image": "https://placehold.co/400x400/orange/white",
+    "inventory": [
+      {
+        "id": "20Y5311G24",
+        "date_time": "2024-10-28 15:15:30",
+        "quantity_sold": 24,
+        "quantity_remaining": 76, 
+        "job": "NOT PROJECT'D'M.10X1.25",
+        "plan_id": "PPDF-024",
+        "signature": "Nattanon"
+      },
+      {
+        "id": "20Y5311G24",
+        "date_time": "2024-10-28 11:32:12",
+        "quantity_sold": 24,
+        "quantity_remaining": 52, 
+        "job": "NOT PROJECT'D'M.10X1.25",
+        "plan_id": "PPDF-237",
+        "signature": "Nattanon"
+      },
+      {
+        "id": "20Y5311G24",
+        "date_time": "2024-10-28 11:32:12",
+        "quantity_sold": 24,
+        "quantity_remaining": 28, 
+        "job": "NOT PROJECT'D'M.10X1.25",
+        "plan_id": "207A08",
+        "signature": "Nattanon"
+      },
+      {
+        "id": "20Y5311G24",
+        "date_time": "2024-10-28 11:32:12",
+        "quantity_sold": 24,
+        "quantity_remaining": 4, 
+        "job": "NOT PROJECT'D'M.10X1.25",
+        "plan_id": "2A03F068",
+        "signature": "Nattanon"
+      },
+      {
+        "id": "20Y5311G24",
+        "date_time": "2024-10-28 11:29:56",
+        "quantity_sold": 4,
+        "quantity_remaining": 0, 
+        "job": "NOT PROJECT'D'M.10X1.25",
+        "plan_id": "2A04F097",
+        "signature": "Nattanon"
+      }
+    ]
+  }
+]

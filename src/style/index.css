@@ -1,0 +1,19 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ซ่อน Scroll Bar บนทั้งแนวตั้งและแนวนอน */
+body {
+    overflow: hidden;
+  }
+  
+  /* หรือถ้าต้องการซ่อนเฉพาะ Scroll bar แนวตั้ง */
+  body {
+    overflow-y: hidden;
+  }
+  
+  /* หรือถ้าต้องการซ่อนเฉพาะ Scroll bar แนวนอน */
+  body {
+    overflow-x: hidden;
+  }
+  

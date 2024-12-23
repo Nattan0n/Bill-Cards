@@ -4,9 +4,17 @@ import jsQR from "jsqr";
 import BillDetailPopup from "../Table/view/BillDetail/BillDetailPopup";
 import { Camera, Loader2 } from "lucide-react";
 import Swal from "sweetalert2";
-import { parseDate } from "../../../utils/dateUtils";
+import { 
+  parseDate, 
+  getLatestMonthAndYear, 
+  isDateInRange,
+  filterBillsByDateRange,
+  groupBillsByPartNumber 
+} from "../../../utils/dateUtils";
+import { useBillFilter } from "../../../hook/useBillFilter";
 
 const ScanQrCodePopup = ({ isOpen, onClose, onSearch, bills }) => {
+  // States
   const [showDetailPopup, setShowDetailPopup] = useState(false);
   const [selectedBill, setSelectedBill] = useState(null);
   const [isScanning, setIsScanning] = useState(false);
@@ -16,42 +24,25 @@ const ScanQrCodePopup = ({ isOpen, onClose, onSearch, bills }) => {
   const [facingMode, setFacingMode] = useState("environment");
   const webcamRef = useRef(null);
 
-  // Group bills by part number
+  // Get latest month/year and filtered bills
+  const latestDateRange = useMemo(() => getLatestMonthAndYear(bills), [bills]);
+  
+  // Use bill filter hook with latest month
+  const filteredBills = useBillFilter(bills, "", { 
+    startDate: latestDateRange?.startDate,
+    endDate: latestDateRange?.endDate
+  });
+
+  // Group filtered bills by part number
   const groupedBills = useMemo(() => {
-    const partMap = new Map();
-
-    if (!Array.isArray(bills)) return [];
-
-    bills.forEach((bill) => {
-      if (!partMap.has(bill.M_PART_NUMBER)) {
-        const relatedBills = bills.filter(
-          (b) => b.M_PART_NUMBER === bill.M_PART_NUMBER
-        );
-
-        const sortedBills = relatedBills.sort((a, b) => {
-          const dateA = parseDate(a.M_DATE);
-          const dateB = parseDate(b.M_DATE);
-          if (!dateA || !dateB) return 0;
-          return dateB.getTime() - dateA.getTime();
-        });
-
-        const totalQty = relatedBills.reduce(
-          (sum, b) => sum + Number(b.M_QTY || 0),
-          0
-        );
-
-        partMap.set(bill.M_PART_NUMBER, {
-          ...sortedBills[0],
-          totalQty,
-          billCount: relatedBills.length,
-          relatedBills: sortedBills,
-          latestDate: parseDate(sortedBills[0].M_DATE),
-        });
-      }
-    });
-
-    return Array.from(partMap.values());
-  }, [bills]);
+    if (!latestDateRange) return [];
+    
+    // First filter by date range
+    const dateFilteredBills = filterBillsByDateRange(bills, latestDateRange);
+    
+    // Then group the filtered bills
+    return groupBillsByPartNumber(dateFilteredBills, latestDateRange);
+  }, [bills, latestDateRange]);
 
   // Reset states when component mounts/unmounts
   useEffect(() => {
@@ -67,15 +58,11 @@ const ScanQrCodePopup = ({ isOpen, onClose, onSearch, bills }) => {
 
     const qrPartNumber = String(qrData.partNumber).trim().toLowerCase();
     
-    const foundBill = groupedBills.find(bill => {
-      const billPartNumber = String(bill?.M_PART_NUMBER || "").trim().toLowerCase();
+    // Search in grouped bills
+    return groupedBills.find(group => {
+      const billPartNumber = String(group?.M_PART_NUMBER || "").trim().toLowerCase();
       return billPartNumber === qrPartNumber;
     });
-
-    console.log("QR Part Number:", qrPartNumber);
-    console.log("Found Bill:", foundBill);
-    
-    return foundBill;
   };
 
   const handleScan = async () => {
@@ -129,11 +116,12 @@ const ScanQrCodePopup = ({ isOpen, onClose, onSearch, bills }) => {
           navigator.vibrate(200);
         }
         
-        setSelectedBill(foundBill);
+        setSelectedBill({
+          ...foundBill,
+          dateRange: latestDateRange // Pass the date range
+        });
         setShowDetailPopup(true);
         setScanningMessage("พบข้อมูล Bill แล้ว");
-        
-        // Only hide the scanner interface
         setShowScanner(false);
       } else {
         await Swal.fire({
@@ -158,7 +146,6 @@ const ScanQrCodePopup = ({ isOpen, onClose, onSearch, bills }) => {
   const handleClose = () => {
     setIsClosing(true);
     setTimeout(() => {
-      // Only close everything if detail popup is not showing
       if (!showDetailPopup) {
         onClose();
       }
@@ -171,7 +158,7 @@ const ScanQrCodePopup = ({ isOpen, onClose, onSearch, bills }) => {
     console.log("Closing detail popup");
     setShowDetailPopup(false);
     setSelectedBill(null);
-    onClose(); // Close everything when detail is closed
+    onClose();
   };
 
   // Don't return null if showing detail popup
@@ -329,7 +316,10 @@ const ScanQrCodePopup = ({ isOpen, onClose, onSearch, bills }) => {
 
       {/* Detail Popup */}
       {showDetailPopup && selectedBill && (
-        <BillDetailPopup bill={selectedBill} onClose={handleCloseDetail} />
+        <BillDetailPopup
+          bill={selectedBill}
+          onClose={handleCloseDetail}
+        />
       )}
     </>
   );

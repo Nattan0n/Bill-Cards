@@ -1,51 +1,84 @@
 // components/BillCard/Table/view/BillTable.jsx
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useMemo } from "react";
 import BillDetailPopup from "./BillDetail/BillDetailPopup";
 import Card from "../common/Card";
+import { PartImage } from "../../../../services/partImageService";
 
 const BillTable = ({ bills, startingIndex = 0, onSelectedRowsChange }) => {
   const [selectedBill, setSelectedBill] = useState(null);
   const [showPopup, setShowPopup] = useState(false);
   const [selectedRows, setSelectedRows] = useState([]);
+  const [isProcessingSelection, setIsProcessingSelection] = useState(false);
 
-  const handleSelectAll = useCallback(
-    (e) => {
+  // Memoize selected bills data
+  const selectedBillsData = useMemo(() => {
+    return selectedRows.map(index => bills[index]);
+  }, [bills, selectedRows]);
+
+  // Optimize select all handler
+  const handleSelectAll = useCallback(async (e) => {
+    try {
+      setIsProcessingSelection(true);
       const isChecked = e.target.checked;
       const newSelectedRows = isChecked ? bills.map((_, index) => index) : [];
       setSelectedRows(newSelectedRows);
+      
+      // Batch update selected bills
+      await Promise.resolve();
       onSelectedRowsChange(isChecked ? bills : []);
-    },
-    [bills, onSelectedRowsChange]
-  );
+    } finally {
+      setIsProcessingSelection(false);
+    }
+  }, [bills, onSelectedRowsChange]);
 
-  const handleSelectRow = useCallback(
-    (index, e) => {
+  // Optimize individual row selection
+  const handleSelectRow = useCallback(async (index, e) => {
+    try {
       e?.stopPropagation();
+      setIsProcessingSelection(true);
 
-      setSelectedRows((prev) => {
+      setSelectedRows(prev => {
         const newSelectedRows = prev.includes(index)
-          ? prev.filter((i) => i !== index)
+          ? prev.filter(i => i !== index)
           : [...prev, index];
 
-        const selectedBills = newSelectedRows.map((idx) => bills[idx]);
+        // Update selected bills data through callback
+        const selectedBills = newSelectedRows.map(idx => bills[idx]);
         onSelectedRowsChange(selectedBills);
 
         return newSelectedRows;
       });
-    },
-    [bills, onSelectedRowsChange]
-  );
+    } finally {
+      setIsProcessingSelection(false);
+    }
+  }, [bills, onSelectedRowsChange]);
 
-  const handleShowPopup = (bill) => {
+  // Optimize popup handling
+  const handleShowPopup = useCallback((bill) => {
     setSelectedBill(bill);
     setShowPopup(true);
-  };
+  }, []);
 
-  const handleClosePopup = () => {
+  const handleClosePopup = useCallback(() => {
     setShowPopup(false);
     setSelectedBill(null);
-  };
+  }, []);
 
+  // Memoize selection status for performance
+  const selectionStatus = useMemo(() => ({
+    totalSelected: selectedRows.length,
+    totalItems: bills.length,
+    isAllSelected: selectedRows.length === bills.length,
+    hasSelections: selectedRows.length > 0
+  }), [selectedRows.length, bills.length]);
+
+  // Status indicator component
+  const SelectionStatus = useCallback(() => (
+    <div className="text-xs bg-white/20 backdrop-blur-sm px-3 py-1.5 rounded-full">
+      {selectionStatus.totalSelected}/{selectionStatus.totalItems} selected
+    </div>
+  ), [selectionStatus]);
+  
   return (
     <div className="w-full">
       {/* Desktop View */}
@@ -169,14 +202,40 @@ const BillTable = ({ bills, startingIndex = 0, onSelectedRowsChange }) => {
                         </div>
                       </td>
                       <td className="p-4 text-sm font-medium text-gray-900">
-                        #{startingIndex + index + 1}
+                        {startingIndex + index + 1}
                       </td>
-                      <td className="p-4">
+                      {/* <td className="p-4">
                         <div className="w-20 h-20 rounded-xl overflow-hidden bg-gray-50 border border-gray-100 group-hover:border-blue-100 transition-all duration-300 shadow-sm">
                           <img
                             src={bill.M_PART_IMG || "https://via.placeholder.com/64"}
                             alt={bill.M_PART_DESCRIPTION || "Part image"}
                             className="w-full h-full object-cover transform transition-transform duration-300 group-hover:scale-105"
+                          />
+                        </div>
+                      </td> */}
+                      {/* <td className="p-4">
+                        <div className="w-20 h-20 rounded-xl overflow-hidden bg-gray-50 border border-gray-100 group-hover:border-blue-100 transition-all duration-300 shadow-sm">
+                          <img
+                            src={"http://127.0.0.1:8000/storage/images/KMks9OZEMYhO7Xilev6uykB48gRW1DvrntbEPx1M.png"}
+                            alt={bill.M_PART_DESCRIPTION || "Part image"}
+                            className="w-full h-full object-cover transform transition-transform duration-300 group-hover:scale-105"
+                          />
+                        </div>
+                      </td> */}
+                      <td className="p-4">
+                        <div className="w-20 h-20 rounded-xl overflow-hidden bg-gray-100 border border-gray-100 group-hover:border-blue-100 transition-all duration-300 shadow-sm">
+                          {console.log(
+                            "Rendering image for part:",
+                            bill.m_part_number
+                          )}{" "}
+                          {/* Debug log */}
+                          <PartImage
+                              partNumber={bill.M_PART_NUMBER}
+                              partName={bill.M_PART_DESCRIPTION}
+                              width="w-20"
+                              height="h-20"
+                              className="object-cover transform transition-transform duration-300 group-hover:scale-105"
+                              showError={false}
                           />
                         </div>
                       </td>
@@ -207,11 +266,13 @@ const BillTable = ({ bills, startingIndex = 0, onSelectedRowsChange }) => {
                         </span>
                       </td>
                       <td className="p-4">
-                        <span className={`inline-flex items-center px-2.5 py-1 rounded-lg ${
-                          bill.totalQty > 0
-                            ? "bg-green-50 text-green-700"
-                            : "bg-red-50 text-red-700"
-                        } text-xs font-medium`}>
+                        <span
+                          className={`inline-flex items-center px-2.5 py-1 rounded-lg ${
+                            bill.totalQty > 0
+                              ? "bg-green-50 text-green-700"
+                              : "bg-red-50 text-red-700"
+                          } text-xs font-medium`}
+                        >
                           <span className="material-symbols-outlined text-sm mr-1">
                             {bill.totalQty > 0 ? "add_circle" : "remove_circle"}
                           </span>
@@ -272,35 +333,6 @@ const BillTable = ({ bills, startingIndex = 0, onSelectedRowsChange }) => {
           </div>
         </div>
 
-        <div className="relative p-4 space-y-4 max-w-md mx-auto">
-          {bills.length > 0 ? (
-            bills.map((bill, index) => (
-              <Card
-                key={index}
-                bill={bill}
-                index={index}
-                selectedRows={selectedRows}
-                handleSelectRow={handleSelectRow}
-                handleShowPopup={handleShowPopup}
-              />
-            ))
-          ) : (
-            <div className="flex flex-col items-center justify-center py-16 px-4">
-              <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 text-center">
-                <span className="material-symbols-outlined text-5xl text-gray-300 mb-3 animate-bounce">
-                  inventory_2
-                </span>
-                <p className="text-gray-500 font-medium mb-1">
-                  No inventory items found
-                </p>
-                <p className="text-gray-400 text-sm">
-                  Try adjusting your search criteria
-                  </p>
-              </div>
-            </div>
-          )}
-        </div>
-
         {/* Select All Section for Mobile */}
         <div className="sticky bottom-0 z-0 bg-white/90 backdrop-blur-md shadow-md border-t border-gray-200">
           <div className="max-w-md mx-auto px-4 py-3">
@@ -342,12 +374,41 @@ const BillTable = ({ bills, startingIndex = 0, onSelectedRowsChange }) => {
             </div>
           </div>
         </div>
+        
+        <div className="relative p-4 space-y-4 max-w-md mx-auto">
+          {bills.length > 0 ? (
+            bills.map((bill, index) => (
+              <Card
+                key={index}
+                bill={bill}
+                index={index}
+                selectedRows={selectedRows}
+                handleSelectRow={handleSelectRow}
+                handleShowPopup={handleShowPopup}
+              />
+            ))
+          ) : (
+            <div className="flex flex-col items-center justify-center py-16 px-4">
+              <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 text-center">
+                <span className="material-symbols-outlined text-5xl text-gray-300 mb-3 animate-bounce">
+                  inventory_2
+                </span>
+                <p className="text-gray-500 font-medium mb-1">
+                  No inventory items found
+                </p>
+                <p className="text-gray-400 text-sm">
+                  Try adjusting your search criteria
+                </p>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Bill Detail Popup */}
-      {showPopup && (
+      {showPopup && selectedBill && (
         <BillDetailPopup 
-          bill={selectedBill}
+          bill={selectedBill} 
           onClose={handleClosePopup}
         />
       )}

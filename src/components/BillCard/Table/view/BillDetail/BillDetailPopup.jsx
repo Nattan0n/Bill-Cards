@@ -16,24 +16,35 @@ const BillDetailPopup = ({ bill, onClose }) => {
   });
   const [isClosing, setIsClosing] = useState(false);
 
-  // แปลงข้อมูลและเรียงลำดับตามวันที่ล่าสุด
+  // แปลงข้อมูลและเรียงลำดับตามวันที่
   const inventoryData = useMemo(() => {
     if (!bill.relatedBills) return [];
+
+    // หายอดเริ่มต้นจากข้อมูลทั้งหมด
+    const allRecords = bill.allRelatedBills || bill.relatedBills;
+    const initialTotal = allRecords.reduce((sum, item) => {
+      const date = new Date(item.M_DATE);
+      // นับเฉพาะรายการที่เก่ากว่าช่วงที่แสดง
+      if (date < new Date(Math.min(...bill.relatedBills.map(b => new Date(b.M_DATE))))) {
+        return sum + Number(item.M_QTY || 0);
+      }
+      return sum;
+    }, 0);
 
     return bill.relatedBills
       .map(item => ({
         id: item.M_ID,
         date_time: item.M_DATE,
-        quantity_sold: item.M_QTY,
+        quantity_sold: Number(item.M_QTY || 0),
         plan_id: item.M_SOURCE_ID,
-        quantity_remaining: item.M_QTY_RM || 0,
         signature: item.M_SOURCE_NAME || '-',
-        transaction_type: item.TRANSACTION_TYPE_NAME
+        transaction_type: item.TRANSACTION_TYPE_NAME,
+        initial_total: initialTotal // เก็บยอดเริ่มต้นไว้
       }))
-      .sort((a, b) => new Date(b.date_time) - new Date(a.date_time)); // เรียงจากใหม่ไปเก่า
-  }, [bill.relatedBills]);
+      .sort((a, b) => new Date(a.date_time) - new Date(b.date_time)); // เรียงจากเก่าไปใหม่
+  }, [bill.relatedBills, bill.allRelatedBills]);
 
-  // ตั้งค่าช่วงวันที่เริ่มต้นจากข้อมูลทั้งหมด
+  // ตั้งค่าช่วงวันที่เริ่มต้น
   useEffect(() => {
     if (inventoryData?.length > 0) {
       const dates = inventoryData.map(item => new Date(item.date_time));
@@ -66,28 +77,28 @@ const BillDetailPopup = ({ bill, onClose }) => {
     }
   }, [inventoryData, dateFilter]);
 
- // คำนวณ running total แยกตามลำดับเวลา
- const inventoryWithRunningTotal = useMemo(() => {
-  // 1. เรียงข้อมูลจากเก่าไปใหม่เพื่อคำนวณ running total
-  const sortedForCalculation = [...filteredInventory]
-    .sort((a, b) => new Date(a.date_time) - new Date(b.date_time));
-  
-  // 2. คำนวณ running total
-  let runningTotal = 0;
-  const withRunningTotal = sortedForCalculation.map(item => {
-    const qty = Number(item.quantity_sold);
-    runningTotal += qty;
-    return {
-      ...item,
-      quantity_in: qty > 0 ? qty : 0,
-      quantity_out: qty < 0 ? Math.abs(qty) : 0,
-      quantity_remaining: runningTotal
-    };
-  });
+  // คำนวณ running total แยกตามลำดับเวลา
+  const inventoryWithRunningTotal = useMemo(() => {
+    if (filteredInventory.length === 0) return [];
 
-  // 3. เรียงกลับจากใหม่ไปเก่าสำหรับการแสดงผล
-  return withRunningTotal.sort((a, b) => new Date(b.date_time) - new Date(a.date_time));
-}, [filteredInventory]);
+    // ใช้ยอดเริ่มต้นจากรายการแรก
+    let runningTotal = filteredInventory[0].initial_total;
+
+    const withRunningTotal = filteredInventory.map(item => {
+      // คำนวณยอดคงเหลือ
+      runningTotal += item.quantity_sold;
+
+      return {
+        ...item,
+        quantity_in: item.quantity_sold > 0 ? item.quantity_sold : 0,
+        quantity_out: item.quantity_sold < 0 ? Math.abs(item.quantity_sold) : 0,
+        quantity_remaining: runningTotal
+      };
+    });
+
+    // เรียงจากใหม่ไปเก่าสำหรับการแสดงผล
+    return withRunningTotal.sort((a, b) => new Date(b.date_time) - new Date(a.date_time));
+  }, [filteredInventory]);
 
   const handleDateChange = (field, value) => {
     setDateFilter(prev => ({
@@ -129,7 +140,6 @@ const BillDetailPopup = ({ bill, onClose }) => {
           
           <div className="p-6 overflow-y-auto max-h-[calc(90vh-5rem)]">
             <div className="grid grid-cols-3 gap-6">
-              {/* Left Column - Part Information */}
               <div className="space-y-4">
                 <PartCard
                   partNumber={bill.M_PART_NUMBER}
@@ -143,7 +153,6 @@ const BillDetailPopup = ({ bill, onClose }) => {
                 />
               </div>
 
-              {/* Right Column - Inventory Details */}
               <div className="col-span-2 space-y-4">
                 <DateFilter
                   dateFilter={dateFilter}
@@ -162,7 +171,7 @@ const BillDetailPopup = ({ bill, onClose }) => {
       {/* Mobile View */}
       <MobileView
         bill={bill}
-        inventoryWithRunningTotal={inventoryWithRunningTotal} // ส่งชื่อ prop ให้ตรงกัน
+        inventoryWithRunningTotal={inventoryWithRunningTotal}
         dateFilter={dateFilter}
         onDateChange={handleDateChange}
         onClose={handleClose}

@@ -31,7 +31,7 @@ export const MobileView = ({
             <PartCard
               partNumber={bill.M_PART_NUMBER}
               description={bill.M_PART_DESCRIPTION}
-              image={bill.M_PART_IMG}
+              image={bill.M_PART_NUMBER}
             />
             <PartInfo
               partNumber={bill.M_PART_NUMBER}

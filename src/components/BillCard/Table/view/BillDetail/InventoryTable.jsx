@@ -52,9 +52,6 @@ export const InventoryTable = ({ inventory }) => (
               <tr key={index} className="hover:bg-gray-50/50">
                 <td className="p-3">
                   <div className="flex items-center gap-2">
-                    <span className="material-symbols-outlined text-gray-400">
-                      tag
-                    </span>
                     <span className="text-sm text-gray-600">{item.id}</span>
                   </div>
                 </td>

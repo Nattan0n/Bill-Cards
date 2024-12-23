@@ -16,10 +16,25 @@ const BillCard = ({ bills }) => {
   const [selectedTableRows, setSelectedTableRows] = useState([]);
   const itemsPerPage = 8;
 
-  // Use the filter hook
+  // คำนวณยอดรวมทั้งหมดแยกตาม part number
+  const totalQuantityByPart = useMemo(() => {
+    const totals = new Map();
+    
+    bills.forEach(bill => {
+      const partNumber = bill.M_PART_NUMBER;
+      if (!partNumber) return;
+      
+      const currentTotal = totals.get(partNumber) || 0;
+      totals.set(partNumber, currentTotal + Number(bill.M_QTY || 0));
+    });
+    
+    return totals;
+  }, [bills]);
+
+  // ใช้ filter hook สำหรับการแสดงผลตาม filter
   const filteredBills = useBillFilter(bills, search, dateFilter);
 
-  // Group by part number after filtering and sort by latest date
+  // Group bills และรวมข้อมูลยอดรวมทั้งหมด
   const groupedBills = useMemo(() => {
     const partMap = new Map();
 
@@ -36,17 +51,23 @@ const BillCard = ({ bills }) => {
           return dateB.getTime() - dateA.getTime();
         });
 
-        const totalQty = relatedBills.reduce(
+        // ยอดรวมจาก bills ที่ผ่าน filter
+        const filteredTotal = relatedBills.reduce(
           (sum, b) => sum + Number(b.M_QTY || 0),
           0
         );
 
+        // ยอดรวมทั้งหมดจากทุก bills
+        const totalQuantity = totalQuantityByPart.get(bill.M_PART_NUMBER) || 0;
+
         partMap.set(bill.M_PART_NUMBER, {
           ...sortedBills[0],
-          totalQty,
+          totalQty: totalQuantity, // ยอดรวมทั้งหมดในระบบ
+          filteredQty: filteredTotal, // ยอดรวมตาม filter
           billCount: relatedBills.length,
           relatedBills: sortedBills,
           latestDate: parseDate(sortedBills[0].M_DATE),
+          allRelatedBills: bills.filter(b => b.M_PART_NUMBER === bill.M_PART_NUMBER) // เก็บ bills ทั้งหมดไว้ด้วย
         });
       }
     });
@@ -57,7 +78,7 @@ const BillCard = ({ bills }) => {
       if (!dateA || !dateB) return 0;
       return dateB.getTime() - dateA.getTime();
     });
-  }, [filteredBills]);
+  }, [filteredBills, totalQuantityByPart, bills]);
 
   // Debounced search handler
   const debouncedSearch = useCallback(
@@ -91,8 +112,7 @@ const BillCard = ({ bills }) => {
 
   const exportToExcel = useCallback(async () => {
     try {
-      const dataToExport =
-        selectedBills.length > 0 ? selectedBills : groupedBills;
+      const dataToExport = selectedBills.length > 0 ? selectedBills : groupedBills;
       await exportBillsToExcel(dataToExport);
     } catch (error) {
       console.error("Export failed:", error);
@@ -140,6 +160,7 @@ const BillCard = ({ bills }) => {
                     startingIndex={indexOfFirstBill}
                     onSelectedRowsChange={handleSelectedRowsChange}
                     key={`${currentPage}-${dateFilter?.startDate}-${dateFilter?.endDate}`}
+                    allBills={bills}
                   />
                   <Pagination
                     totalPages={totalPages}
@@ -178,6 +199,7 @@ const BillCard = ({ bills }) => {
                     startingIndex={indexOfFirstBill}
                     onSelectedRowsChange={handleSelectedRowsChange}
                     key={`${currentPage}-${search}-${dateFilter?.startDate}-${dateFilter?.endDate}`}
+                    allBills={bills}
                   />
                   <Pagination
                     totalPages={totalPages}

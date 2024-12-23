@@ -17,7 +17,7 @@ const Navigation = ({ user, roles, onLogout }) => {
   const handleNavigate = async (url) => {
     try {
       // เรียก CSRF cookie ก่อน
-      await axios.get("http://localhost:8000/sanctum/csrf-cookie", {
+      await axios.get("http://129.200.6.50:83/sanctum/csrf-cookie", {
         withCredentials: true,
       });
       // redirect ไปยัง URL ที่ต้องการ

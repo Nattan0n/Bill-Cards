@@ -24,7 +24,7 @@ export const InventoryTable = ({ inventory , startingIndex = 0 }) => (
         <thead className="bg-white sticky top-0 z-10">
           <tr className="border-b">
             <th className="p-3 text-left">
-              <span className="text-sm text-gray-600">ID</span>
+              <span className="text-sm text-gray-600">No.</span>
             </th>
             <th className="p-3 text-left">
               <span className="text-sm text-gray-600">วันที่</span>

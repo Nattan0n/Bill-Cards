@@ -1,7 +1,7 @@
 // components/BillCard/view/BillDetail/InventoryTable.jsx
 import React from "react";
 
-export const InventoryTable = ({ inventory }) => (
+export const InventoryTable = ({ inventory , startingIndex = 0 }) => (
   <div className="bg-white rounded-2xl shadow-sm">
     {/* Header */}
     <div className="bg-gradient-to-r from-[#4052e5] to-[#4052e5]/90 p-4 rounded-t-2xl flex justify-between items-center">
@@ -52,7 +52,7 @@ export const InventoryTable = ({ inventory }) => (
               <tr key={index} className="hover:bg-gray-50/50">
                 <td className="p-3">
                   <div className="flex items-center gap-2">
-                    <span className="text-sm text-gray-600">{item.id}</span>
+                    <span className="text-sm text-gray-600">{startingIndex + index + 1}</span>
                   </div>
                 </td>
                 <td className="p-3">

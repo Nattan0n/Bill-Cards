@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { imageApi } from '../utils/axios';
 
-const BASE_URL = 'http://127.0.0.1:8000';
+const BASE_URL = 'http://129.200.6.50:83';
 const DEFAULT_IMAGE = 'No_Image_Available.jpg';
 
 // สร้าง cache สำหรับเก็บข้อมูลรูปภาพ

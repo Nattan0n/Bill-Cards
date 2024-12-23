@@ -1,16 +1,11 @@
-// qrCodeBatchGenerator.js
+// QrCodeGenerator.jsx
 import React, { useState, useEffect } from "react";
 import QRCode from "qrcode";
 
 // ฟังก์ชันสร้าง QR Code สำหรับ mobile
 const generateMobileQRCode = async (bill) => {
   try {
-    // ลดขนาดข้อมูลให้เหลือแค่ที่จำเป็น
-    const qrData = {
-      partNumber: bill.M_PART_NUMBER,
-      date: bill.M_DATE,
-      qty: bill.M_QTY
-    };
+    const qrData = bill.M_PART_NUMBER;
 
     const options = {
       width: 200,
@@ -25,7 +20,7 @@ const generateMobileQRCode = async (bill) => {
       }
     };
 
-    return await QRCode.toDataURL(JSON.stringify(qrData), options);
+    return await QRCode.toDataURL(qrData, options);
   } catch (error) {
     console.error("Mobile QR generation error:", error);
     throw error;
@@ -35,13 +30,7 @@ const generateMobileQRCode = async (bill) => {
 // ฟังก์ชันสร้าง QR Code สำหรับ desktop
 const generateDesktopQRCode = async (bill) => {
   try {
-    const qrData = {
-      partNumber: bill.M_PART_NUMBER,
-      partDescription: bill.M_PART_DESCRIPTION,
-      customer: bill.M_SUBINV,
-      date: bill.M_DATE,
-      quantity: bill.M_QTY
-    };
+    const qrData = bill.M_PART_NUMBER;
 
     const options = {
       width: 500,
@@ -53,7 +42,7 @@ const generateDesktopQRCode = async (bill) => {
       }
     };
 
-    const qrDataUrl = await QRCode.toDataURL(JSON.stringify(qrData), options);
+    const qrDataUrl = await QRCode.toDataURL(qrData, options);
 
     // เพิ่ม logo สำหรับ desktop
     const canvas = document.createElement('canvas');

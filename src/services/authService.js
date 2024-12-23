@@ -2,7 +2,7 @@ import axios from 'axios';
 
 // สร้าง axios instance
 const api = axios.create({
-    baseURL: 'http://localhost:8000',
+    baseURL: 'http://129.200.6.50:83',
     withCredentials: true,
     headers: {
         'Content-Type': 'application/json',
@@ -27,7 +27,7 @@ api.interceptors.response.use(
 export const authService = {
     getCsrfToken: async () => {
         try {
-            await axios.get('http://localhost:8000/sanctum/csrf-cookie', {
+            await axios.get('http://129.200.6.50:83/sanctum/csrf-cookie', {
                 withCredentials: true
             });
             // ดึง token จาก cookie และเพิ่มเข้าไปใน default headers
@@ -65,7 +65,7 @@ export const authService = {
         } catch (error) {
             console.error('Logout error:', error);
             // ถ้าเกิด error แต่ต้องการให้ logout ไม่ว่าอะไรจะเกิดขึ้น
-            window.location.href = 'http://localhost:8000/login';
+            window.location.href = 'http://129.200.6.50:83/login';
             throw error;
         }
     }

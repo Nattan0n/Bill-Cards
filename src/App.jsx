@@ -41,7 +41,7 @@ const App = () => {
         )}
         <Routes>
           <Route 
-            path="/billcard" 
+            path="/iplan/billcard" 
             element={
               <BillCard 
                 bills={bills} 

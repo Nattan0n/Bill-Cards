@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import axios from 'axios';
 
 const api = axios.create({
-    baseURL: 'http://localhost:8000',
+    baseURL: 'http://129.200.6.50:83',
     withCredentials: true,
     headers: {
         'Content-Type': 'application/json',
@@ -29,7 +29,7 @@ export const useAuth = () => {
             setError(err.message);
             // ถ้าไม่มีสิทธิ์เข้าถึง (401) ให้ redirect ไปหน้า login
             if (err.response?.status === 401) {
-                window.location.href = 'http://localhost:8000/login';
+                window.location.href = 'http://129.200.6.50:83/login';
             }
         } finally {
             setLoading(false);

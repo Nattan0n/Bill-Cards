@@ -159,7 +159,7 @@ const Navigation = ({ user, roles, onLogout }) => {
             <div className="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex">
               <NavLink
                 className="inline-flex items-center px-1 pt-1 border-b-2 border-indigo-400 text-sm font-medium leading-5 text-gray-900 focus:outline-none focus:border-indigo-700 transition duration-150 ease-in-out"
-                to="/billcard"
+                to="iplan/billcard"
               >
                 Bill Card
               </NavLink>
@@ -287,7 +287,7 @@ const Navigation = ({ user, roles, onLogout }) => {
             <div className="py-3 px-3">
               {/* Bill Card Link */}
               <NavLink
-                to="/billcard"
+                to="iplan/billcard"
                 className="flex items-center w-full px-4 py-2.5 text-sm text-gray-700 rounded-lg hover:bg-blue-50 transition-colors duration-200"
                 onClick={() => setIsOpenHamburger(false)}
               >

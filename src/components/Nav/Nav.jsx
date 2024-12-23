@@ -32,7 +32,7 @@ const Navigation = ({ user, roles, onLogout }) => {
       await authService.logout();
       // รอให้ logout สำเร็จก่อนแล้วค่อย redirect
       setTimeout(() => {
-        window.location.href = "http://localhost:8000/login";
+        window.location.href = "http://129.200.6.50:83/login";
       }, 100);
     } catch (error) {
       console.error("Logout failed:", error);
@@ -48,7 +48,7 @@ const Navigation = ({ user, roles, onLogout }) => {
             {/* Logo */}
             <div className="shrink-0 flex items-center">
               <button
-                onClick={() => handleNavigate("http://127.0.0.1:8000/landing")}
+                onClick={() => handleNavigate("http://129.200.6.50:83/landing")}
               >
                 <img
                   src={LogoIcon}
@@ -62,7 +62,7 @@ const Navigation = ({ user, roles, onLogout }) => {
             {checkRole(["plAdmin", "plSuperAdmin", "superAdmin"]) && (
               <div className="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex">
                 <button
-                  onClick={() => handleNavigate("http://127.0.0.1:8000/plan")}
+                  onClick={() => handleNavigate("http://129.200.6.50:83/plan")}
                   className="inline-flex items-center px-1 pt-1 border-b-2 border-transparent text-sm font-medium leading-5 text-gray-500 hover:text-gray-700 hover:border-gray-300 focus:outline-none focus:text-gray-700 focus:border-gray-300 transition duration-150 ease-in-out"
                 >
                   Plan
@@ -73,7 +73,7 @@ const Navigation = ({ user, roles, onLogout }) => {
             {checkRole(["plAdmin", "plSuperAdmin", "superAdmin"]) && (
               <div className="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex">
                 <button
-                  onClick={() => handleNavigate("http://127.0.0.1:8000/part")}
+                  onClick={() => handleNavigate("http://129.200.6.50:83/part")}
                   className="inline-flex items-center px-1 pt-1 border-b-2 border-transparent text-sm font-medium leading-5 text-gray-500 hover:text-gray-700 hover:border-gray-300 focus:outline-none focus:text-gray-700 focus:border-gray-300 transition duration-150 ease-in-out"
                 >
                   AddPart
@@ -92,7 +92,7 @@ const Navigation = ({ user, roles, onLogout }) => {
               <div className="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex">
                 <button
                   onClick={() =>
-                    handleNavigate("http://127.0.0.1:8000/listplan")
+                    handleNavigate("http://129.200.6.50:83/listplan")
                   }
                   className="inline-flex items-center px-1 pt-1 border-b-2 border-transparent text-sm font-medium leading-5 text-gray-500 hover:text-gray-700 hover:border-gray-300 focus:outline-none focus:text-gray-700 focus:border-gray-300 transition duration-150 ease-in-out"
                 >
@@ -104,7 +104,7 @@ const Navigation = ({ user, roles, onLogout }) => {
             {checkRole(["scanner"]) && (
               <div className="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex">
                 <button
-                  onClick={() => handleNavigate("http://127.0.0.1:8000/scan")}
+                  onClick={() => handleNavigate("http://129.200.6.50:83/scan")}
                   className="inline-flex items-center px-1 pt-1 border-b-2 border-transparent text-sm font-medium leading-5 text-gray-500 hover:text-gray-700 hover:border-gray-300 focus:outline-none focus:text-gray-700 focus:border-gray-300 transition duration-150 ease-in-out"
                 >
                   Scanconfirm
@@ -115,7 +115,7 @@ const Navigation = ({ user, roles, onLogout }) => {
             {checkRole(["lock"]) && (
               <div className="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex">
                 <button
-                  onClick={() => handleNavigate("http://127.0.0.1:8000/unlock")}
+                  onClick={() => handleNavigate("http://129.200.6.50:83/unlock")}
                   className="inline-flex items-center px-1 pt-1 border-b-2 border-transparent text-sm font-medium leading-5 text-gray-500 hover:text-gray-700 hover:border-gray-300 focus:outline-none focus:text-gray-700 focus:border-gray-300 transition duration-150 ease-in-out"
                 >
                   Unlock
@@ -125,7 +125,7 @@ const Navigation = ({ user, roles, onLogout }) => {
 
             <div className="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex">
               <button
-                onClick={() => handleNavigate("http://127.0.0.1:8000/history")}
+                onClick={() => handleNavigate("http://129.200.6.50:83/history")}
                 className="inline-flex items-center px-1 pt-1 border-b-2 border-transparent text-sm font-medium leading-5 text-gray-500 hover:text-gray-700 hover:border-gray-300 focus:outline-none focus:text-gray-700 focus:border-gray-300 transition duration-150 ease-in-out"
               >
                 History
@@ -135,7 +135,7 @@ const Navigation = ({ user, roles, onLogout }) => {
             {checkRole(["plAdmin", "plSuperAdmin", "superAdmin"]) && (
               <div className="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex">
                 <button
-                  onClick={() => handleNavigate("http://127.0.0.1:8000/image")}
+                  onClick={() => handleNavigate("http://129.200.6.50:83/image")}
                   className="inline-flex items-center px-1 pt-1 border-b-2 border-transparent text-sm font-medium leading-5 text-gray-500 hover:text-gray-700 hover:border-gray-300 focus:outline-none focus:text-gray-700 focus:border-gray-300 transition duration-150 ease-in-out"
                 >
                   AddImage
@@ -147,7 +147,7 @@ const Navigation = ({ user, roles, onLogout }) => {
               <div className="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex">
                 <button
                   onClick={() =>
-                    handleNavigate("http://127.0.0.1:8000/createuser")
+                    handleNavigate("http://129.200.6.50:83/createuser")
                   }
                   className="inline-flex items-center px-1 pt-1 border-b-2 border-transparent text-sm font-medium leading-5 text-gray-500 hover:text-gray-700 hover:border-gray-300 focus:outline-none focus:text-gray-700 focus:border-gray-300 transition duration-150 ease-in-out"
                 >

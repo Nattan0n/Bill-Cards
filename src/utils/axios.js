@@ -11,7 +11,7 @@ export const oracleApi = axios.create({
 });
 
 export const imageApi = axios.create({
-    baseURL: 'http://129.200.6.50:83',
+    baseURL: 'http://127.0.0.1:8000',
     headers: {
         'Accept': '*/*',
         'X-Requested-With': 'XMLHttpRequest'

@@ -14,18 +14,18 @@ const Navigation = ({ user, roles, onLogout }) => {
     return roles.some((role) => rolesNeeded.includes(role));
   };
 
-  // const handleNavigate = async (url) => {
-  //   try {
-  //     // เรียก CSRF cookie ก่อน
-  //     await axios.get("http://localhost:8000/sanctum/csrf-cookie", {
-  //       withCredentials: true,
-  //     });
-  //     // redirect ไปยัง URL ที่ต้องการ
-  //     window.location.href = url;
-  //   } catch (error) {
-  //     console.error("Navigation error:", error);
-  //   }
-  // };
+  const handleNavigate = async (url) => {
+    try {
+      // เรียก CSRF cookie ก่อน
+      await axios.get("http://localhost:8000/sanctum/csrf-cookie", {
+        withCredentials: true,
+      });
+      // redirect ไปยัง URL ที่ต้องการ
+      window.location.href = url;
+    } catch (error) {
+      console.error("Navigation error:", error);
+    }
+  };
 
   const handleLogout = async () => {
     try {
@@ -48,7 +48,7 @@ const Navigation = ({ user, roles, onLogout }) => {
             {/* Logo */}
             <div className="shrink-0 flex items-center">
               <button
-                onClick={() => window.location.href = "http://129.200.6.50:83/landing" }
+                onClick={() => handleNavigate("http://129.200.6.50:83/landing")}
               >
                 <img
                   src={LogoIcon}
@@ -62,7 +62,7 @@ const Navigation = ({ user, roles, onLogout }) => {
             {checkRole(["plAdmin", "plSuperAdmin", "superAdmin"]) && (
               <div className="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex">
                 <button
-                  onClick={() => window.location.href = "http://129.200.6.50:83/plan" }
+                  onClick={() => handleNavigate("http://129.200.6.50:83/plan")}
                   className="inline-flex items-center px-1 pt-1 border-b-2 border-transparent text-sm font-medium leading-5 text-gray-500 hover:text-gray-700 hover:border-gray-300 focus:outline-none focus:text-gray-700 focus:border-gray-300 transition duration-150 ease-in-out"
                 >
                   Plan
@@ -73,7 +73,7 @@ const Navigation = ({ user, roles, onLogout }) => {
             {checkRole(["plAdmin", "plSuperAdmin", "superAdmin"]) && (
               <div className="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex">
                 <button
-                  onClick={() => window.location.href = "http://129.200.6.50:83/part" }
+                  onClick={() => handleNavigate("http://129.200.6.50:83/part")}
                   className="inline-flex items-center px-1 pt-1 border-b-2 border-transparent text-sm font-medium leading-5 text-gray-500 hover:text-gray-700 hover:border-gray-300 focus:outline-none focus:text-gray-700 focus:border-gray-300 transition duration-150 ease-in-out"
                 >
                   AddPart
@@ -92,7 +92,7 @@ const Navigation = ({ user, roles, onLogout }) => {
               <div className="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex">
                 <button
                   onClick={() =>
-                    window.location.href = "http://129.200.6.50:83/listplan" 
+                    handleNavigate("http://129.200.6.50:83/listplan")
                   }
                   className="inline-flex items-center px-1 pt-1 border-b-2 border-transparent text-sm font-medium leading-5 text-gray-500 hover:text-gray-700 hover:border-gray-300 focus:outline-none focus:text-gray-700 focus:border-gray-300 transition duration-150 ease-in-out"
                 >
@@ -104,7 +104,7 @@ const Navigation = ({ user, roles, onLogout }) => {
             {checkRole(["scanner"]) && (
               <div className="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex">
                 <button
-                  onClick={() => window.location.href = "http://129.200.6.50:83/scan"}
+                  onClick={() => handleNavigate("http://129.200.6.50:83/scan")}
                   className="inline-flex items-center px-1 pt-1 border-b-2 border-transparent text-sm font-medium leading-5 text-gray-500 hover:text-gray-700 hover:border-gray-300 focus:outline-none focus:text-gray-700 focus:border-gray-300 transition duration-150 ease-in-out"
                 >
                   Scanconfirm
@@ -115,7 +115,7 @@ const Navigation = ({ user, roles, onLogout }) => {
             {checkRole(["lock"]) && (
               <div className="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex">
                 <button
-                  onClick={() => window.location.href = "http://129.200.6.50:83/unlock"}
+                  onClick={() => handleNavigate("http://129.200.6.50:83/unlock")}
                   className="inline-flex items-center px-1 pt-1 border-b-2 border-transparent text-sm font-medium leading-5 text-gray-500 hover:text-gray-700 hover:border-gray-300 focus:outline-none focus:text-gray-700 focus:border-gray-300 transition duration-150 ease-in-out"
                 >
                   Unlock
@@ -125,7 +125,7 @@ const Navigation = ({ user, roles, onLogout }) => {
 
             <div className="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex">
               <button
-                onClick={() => window.location.href = "http://129.200.6.50:83/history" }
+                onClick={() => handleNavigate("http://129.200.6.50:83/history")}
                 className="inline-flex items-center px-1 pt-1 border-b-2 border-transparent text-sm font-medium leading-5 text-gray-500 hover:text-gray-700 hover:border-gray-300 focus:outline-none focus:text-gray-700 focus:border-gray-300 transition duration-150 ease-in-out"
               >
                 History
@@ -135,7 +135,7 @@ const Navigation = ({ user, roles, onLogout }) => {
             {checkRole(["plAdmin", "plSuperAdmin", "superAdmin"]) && (
               <div className="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex">
                 <button
-                  onClick={() => window.location.href = "http://129.200.6.50:83/image"}
+                  onClick={() => handleNavigate("http://129.200.6.50:83/image")}
                   className="inline-flex items-center px-1 pt-1 border-b-2 border-transparent text-sm font-medium leading-5 text-gray-500 hover:text-gray-700 hover:border-gray-300 focus:outline-none focus:text-gray-700 focus:border-gray-300 transition duration-150 ease-in-out"
                 >
                   AddImage
@@ -147,7 +147,7 @@ const Navigation = ({ user, roles, onLogout }) => {
               <div className="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex">
                 <button
                   onClick={() =>
-                    window.location.href = "http://129.200.6.50:83/createuser"
+                    handleNavigate("http://129.200.6.50:83/createuser")
                   }
                   className="inline-flex items-center px-1 pt-1 border-b-2 border-transparent text-sm font-medium leading-5 text-gray-500 hover:text-gray-700 hover:border-gray-300 focus:outline-none focus:text-gray-700 focus:border-gray-300 transition duration-150 ease-in-out"
                 >
@@ -173,7 +173,7 @@ const Navigation = ({ user, roles, onLogout }) => {
                 onClick={() => setIsOpen(!isOpen)}
                 className="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-gray-500 bg-white hover:text-gray-700 focus:outline-none transition ease-in-out duration-150"
               >
-                <div>{"User"}</div>
+                <div>{user?.name || "User"}</div>
                 <div className="ms-1">
                   <svg
                     className="fill-current h-4 w-4"

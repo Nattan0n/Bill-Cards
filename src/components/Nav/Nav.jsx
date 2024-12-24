@@ -14,18 +14,18 @@ const Navigation = ({ user, roles, onLogout }) => {
     return roles.some((role) => rolesNeeded.includes(role));
   };
 
-  // const handleNavigate = async (url) => {
-  //   try {
-  //     // เรียก CSRF cookie ก่อน
-  //     await axios.get("http://localhost:8000/sanctum/csrf-cookie", {
-  //       withCredentials: true,
-  //     });
-  //     // redirect ไปยัง URL ที่ต้องการ
-  //     window.location.href = url;
-  //   } catch (error) {
-  //     console.error("Navigation error:", error);
-  //   }
-  // };
+  const handleNavigate = async (url) => {
+    try {
+      // เรียก CSRF cookie ก่อน
+      await axios.get("http://129.200.6.50:83/sanctum/csrf-cookie", {
+        withCredentials: true,
+      });
+      // redirect ไปยัง URL ที่ต้องการ
+      window.location.href = url;
+    } catch (error) {
+      console.error("Navigation error:", error);
+    }
+  };
 
   const handleLogout = async () => {
     try {
@@ -159,7 +159,7 @@ const Navigation = ({ user, roles, onLogout }) => {
             <div className="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex">
               <NavLink
                 className="inline-flex items-center px-1 pt-1 border-b-2 border-indigo-400 text-sm font-medium leading-5 text-gray-900 focus:outline-none focus:border-indigo-700 transition duration-150 ease-in-out"
-                to="iplan/billcard"
+                to="/iplan/billcard"
               >
                 Bill Card
               </NavLink>

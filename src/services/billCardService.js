@@ -40,6 +40,7 @@ export const billCardService = {
                 M_SOURCE_LINE_ID: item.m_source_line_id || '',
                 M_TYPE_ID: item.m_type_id || '',
                 TRANSACTION_TYPE_NAME: item.m_type_name || '',
+                M_USER_NAME: item.user_name || '',
                 // ใช้ part number เป็นชื่อไฟล์รูป
                 M_PART_IMG: item.m_part_number ? `/images/${item.m_part_number}.png` : ''
             }));

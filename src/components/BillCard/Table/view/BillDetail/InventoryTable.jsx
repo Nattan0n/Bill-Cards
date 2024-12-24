@@ -109,7 +109,7 @@ export const InventoryTable = ({ inventory , startingIndex = 0 }) => (
                       person
                     </span>
                     <span className="text-sm text-gray-600">
-                      {item.signature}
+                      {item.username}
                     </span>
                   </div>
                 </td>

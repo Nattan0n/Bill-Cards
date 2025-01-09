@@ -85,7 +85,7 @@ export const InventoryRecord = ({ item }) => (
         <span className="material-symbols-outlined text-gray-400">
           person
         </span>
-        <span className="text-sm text-gray-600">{item.signature}</span>
+        <span className="text-sm text-gray-600">{item.username}</span>
       </div>
     </div>
   </div>

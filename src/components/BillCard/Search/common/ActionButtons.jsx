@@ -1,15 +1,26 @@
 // components/BillCard/SearchComponents/ActionButtons.jsx
-import React from 'react';
-import { IconButton } from './IconButton';
+import React from "react";
+import { IconButton } from "./IconButton";
+import { SubInventoryDropdown } from "./SubInventoryDropdown";
 
-export const ActionButtons = ({ 
-  isFiltered, 
-  onFilter, 
-  onGenerateQr, 
-  onExport 
+export const ActionButtons = ({
+  isFiltered,
+  onFilter,
+  onGenerateQr,
+  onExport,
+  onSelectSubInv,
+  selectedSubInv,
+  bills,
 }) => {
   return (
     <div className="flex items-center gap-3">
+      {/* SubInventory Dropdown */}
+      <SubInventoryDropdown
+        onSelectSubInv={onSelectSubInv}
+        selectedSubInv={selectedSubInv}
+        bills={bills}
+      />
+
       {/* Date Filter Button */}
       <IconButton
         icon="filter_alt"
@@ -17,7 +28,7 @@ export const ActionButtons = ({
         onClick={onFilter}
         iconColor="text-blue-600"
         className={`flex items-center px-4 py-2.5 ${
-          isFiltered ? 'bg-blue-100 text-blue-700' : 'bg-white text-gray-700'
+          isFiltered ? "bg-blue-100 text-blue-700" : "bg-white text-gray-700"
         } rounded-xl border border-blue-100 shadow-sm hover:bg-blue-50 transition-all duration-200`}
         tooltipText="Filter data by selecting a specific date range"
       />

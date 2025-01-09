@@ -11,6 +11,8 @@ const BillSearch = ({
   onExport,
   bills,
   onFilterChange,
+  onSelectSubInv,
+  selectedSubInv,
   isFiltered,
   defaultDates,
   filteredBills,
@@ -24,15 +26,15 @@ const BillSearch = ({
   const [selectedBillsForQr, setSelectedBillsForQr] = useState([]);
   const [isDateFilterPopupOpen, setIsDateFilterPopupOpen] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [isGeneratingQr, setIsGeneratingQr] = useState(false);
 
   const dropdownRef = useRef(null);
   useClickOutside(dropdownRef, () => setIsDropdownOpen(false));
 
-  // Search handler without modifying the search term
   const handleSearchChange = (e) => {
     const value = e.target.value;
     setSearchTerm(value);
-    onSearch(value); // Pass the raw value without modification
+    onSearch(value);
   };
 
   const openModal = () => setIsModalOpen(true);
@@ -45,12 +47,37 @@ const BillSearch = ({
     setIsDateFilterPopupOpen(false);
   };
 
-  const handleOpenQrSelection = () => setShowQrSelectionPopup(true);
-  const handleCloseQrSelection = () => setShowQrSelectionPopup(false);
-  const handleGenerateQr = (selectedBills) => {
-    setSelectedBillsForQr(selectedBills);
-    setShowQrPopup(true);
+  const handleOpenQrSelection = () => {
+    setShowQrSelectionPopup(true);
+    setIsGeneratingQr(false); // Reset loading state
   };
+
+  const handleCloseQrSelection = () => {
+    if (!isGeneratingQr) {
+      setShowQrSelectionPopup(false);
+    }
+  };
+
+  const handleGenerateQr = async (selectedBills) => {
+    try {
+      setIsGeneratingQr(true);
+      // สร้าง delay เล็กน้อยเพื่อให้ loading state ทำงาน
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      // Set selected bills for QR popup
+      setSelectedBillsForQr(selectedBills);
+      
+      // Close selection popup and show QR popup
+      setShowQrSelectionPopup(false);
+      setShowQrPopup(true);
+    } catch (error) {
+      console.error('Error generating QR codes:', error);
+      // Handle error appropriately
+    } finally {
+      setIsGeneratingQr(false);
+    }
+  };
+
   const handleCloseQrPopup = () => {
     setShowQrPopup(false);
     setSelectedBillsForQr([]);
@@ -73,6 +100,10 @@ const BillSearch = ({
                 onFilter={handleOpenDateFilterPopup}
                 onGenerateQr={handleOpenQrSelection}
                 onExport={onExport}
+                onSelectSubInv={onSelectSubInv}
+                selectedSubInv={selectedSubInv}
+                bills={bills}
+                disabled={isGeneratingQr}
               />
             </div>
           </div>
@@ -100,6 +131,7 @@ const BillSearch = ({
                 onFilter={handleOpenDateFilterPopup}
                 onGenerateQr={handleOpenQrSelection}
                 onExport={onExport}
+                disabled={isGeneratingQr}
               />
             </div>
           </div>

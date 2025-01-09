@@ -6,20 +6,25 @@ import { useBillDataAPI } from "./hook/useBillDataAPI";
 import { useAuth } from './hook/useAuth';
 import "./style/App.css"
 
+// แก้ไขส่วน loading ใน App.jsx
+const LoadingScreen = () => (
+  <div className="fixed inset-0 bg-white z-50">
+    <div className="flex items-center justify-center w-full h-screen">
+      <div className="flex flex-col items-center gap-3">
+        <div className="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+        <div className="text-xl text-gray-600">กำลังโหลดข้อมูล...</div>
+      </div>
+    </div>
+  </div>
+);
+
+// ใช้งานใน App component
 const App = () => {
   const { bills, error, loading, refreshBills } = useBillDataAPI();
   const { user, roles, loading: authLoading, error: authError, logout } = useAuth();
 
-  // ถ้ากำลังโหลดข้อมูล authentication
-  if (authLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="flex flex-col items-center gap-3">
-          <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
-          <div className="text-lg text-gray-600">กำลังโหลดข้อมูล...</div>
-        </div>
-      </div>
-    );
+  if (authLoading || loading) {
+    return <LoadingScreen />;
   }
 
   return (
@@ -29,14 +34,6 @@ const App = () => {
         {error && (
           <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
             {error}
-          </div>
-        )}
-        {loading && (
-          <div className="flex items-center justify-center py-8">
-            <div className="flex flex-col items-center gap-3">
-              <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
-              <div className="text-lg text-gray-600">กำลังโหลดรายการบิล...</div>
-            </div>
           </div>
         )}
         <Routes>
@@ -55,5 +52,4 @@ const App = () => {
     </BrowserRouter>
   );
 };
-
 export default App;

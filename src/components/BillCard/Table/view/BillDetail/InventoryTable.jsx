@@ -89,7 +89,7 @@ export const InventoryTable = ({ inventory , startingIndex = 0 }) => (
                       description
                     </span>
                     <span className="text-sm text-gray-600">
-                      {item.plan_id}
+                      {item.source_name || "-"}
                     </span>
                   </div>
                 </td>

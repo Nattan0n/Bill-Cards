@@ -25,13 +25,13 @@ const BillDetailPopup = ({ bill, onClose }) => {
     const initialTotal = allRecords.reduce((sum, item) => {
       const date = new Date(item.M_DATE);
       // นับเฉพาะรายการที่เก่ากว่าช่วงที่แสดง
-      if (date < new Date(Math.min(...bill.relatedBills.map(b => new Date(b.M_DATE))))) {
+      if (dateFilter.startDate && date < new Date(dateFilter.startDate)) {
         return sum + Number(item.M_QTY || 0);
       }
       return sum;
     }, 0);
 
-    return bill.relatedBills
+    return allRecords
       .map(item => ({
         id: item.M_ID,
         date_time: item.M_DATE,
@@ -40,24 +40,30 @@ const BillDetailPopup = ({ bill, onClose }) => {
         signature: item.M_SOURCE_NAME || '-',
         transaction_type: item.TRANSACTION_TYPE_NAME,
         username: item.M_USER_NAME,
+        source_name: item.M_SOURCE_NAME,
         initial_total: initialTotal // เก็บยอดเริ่มต้นไว้
       }))
       .sort((a, b) => new Date(a.date_time) - new Date(b.date_time)); // เรียงจากเก่าไปใหม่
-  }, [bill.relatedBills, bill.allRelatedBills]);
+  }, [bill.relatedBills, bill.allRelatedBills, dateFilter.startDate]);
 
-  // ตั้งค่าช่วงวันที่เริ่มต้น
+  // ตั้งค่าช่วงวันที่เริ่มต้นเป็นเดือนล่าสุด
   useEffect(() => {
-    if (inventoryData?.length > 0) {
-      const dates = inventoryData.map(item => new Date(item.date_time));
-      const minDate = new Date(Math.min(...dates));
+    if (bill?.relatedBills?.length > 0) {
+      // หาวันที่ล่าสุด
+      const dates = bill.relatedBills.map(item => new Date(item.M_DATE));
       const maxDate = new Date(Math.max(...dates));
       
+      // คำนวณวันที่เริ่มต้นของเดือนล่าสุด
+      const startOfMonth = new Date(maxDate.getFullYear(), maxDate.getMonth(), 1);
+      // คำนวณวันที่สิ้นสุดของเดือนล่าสุด
+      const endOfMonth = new Date(maxDate.getFullYear(), maxDate.getMonth() + 1, 0);
+      
       setDateFilter({
-        startDate: minDate.toISOString().split("T")[0],
-        endDate: maxDate.toISOString().split("T")[0],
+        startDate: startOfMonth.toISOString().split("T")[0],
+        endDate: endOfMonth.toISOString().split("T")[0],
       });
     }
-  }, [inventoryData]);
+  }, [bill.relatedBills]);
 
   // กรองข้อมูลตามช่วงวันที่
   useEffect(() => {
@@ -78,15 +84,13 @@ const BillDetailPopup = ({ bill, onClose }) => {
     }
   }, [inventoryData, dateFilter]);
 
-  // คำนวณ running total แยกตามลำดับเวลา
+  // คำนวณ running total โดยใช้ยอดเริ่มต้นจากรายการก่อนหน้า
   const inventoryWithRunningTotal = useMemo(() => {
     if (filteredInventory.length === 0) return [];
 
-    // ใช้ยอดเริ่มต้นจากรายการแรก
     let runningTotal = filteredInventory[0].initial_total;
 
     const withRunningTotal = filteredInventory.map(item => {
-      // คำนวณยอดคงเหลือ
       runningTotal += item.quantity_sold;
 
       return {

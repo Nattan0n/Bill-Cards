@@ -5,6 +5,7 @@ import { PartImage } from "../../../../services/partImageService";
 const Card = ({
   bill,
   index,
+  startingIndex = 0, 
   selectedRows,
   handleSelectRow,
   handleShowPopup,
@@ -48,7 +49,7 @@ const Card = ({
               </svg>
             </span>
           </div>
-          <span className="text-lg font-medium">{index + 1}</span>
+          <span className="text-lg font-medium">{startingIndex + index + 1}</span>
         </div>
         <div className="flex items-center space-x-2">
           <span className="material-symbols-outlined text-sm">

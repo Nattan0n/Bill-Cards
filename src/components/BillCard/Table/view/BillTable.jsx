@@ -12,46 +12,52 @@ const BillTable = ({ bills, startingIndex = 0, onSelectedRowsChange }) => {
 
   // Memoize selected bills data
   const selectedBillsData = useMemo(() => {
-    return selectedRows.map(index => bills[index]);
+    return selectedRows.map((index) => bills[index]);
   }, [bills, selectedRows]);
 
   // Optimize select all handler
-  const handleSelectAll = useCallback(async (e) => {
-    try {
-      setIsProcessingSelection(true);
-      const isChecked = e.target.checked;
-      const newSelectedRows = isChecked ? bills.map((_, index) => index) : [];
-      setSelectedRows(newSelectedRows);
-      
-      // Batch update selected bills
-      await Promise.resolve();
-      onSelectedRowsChange(isChecked ? bills : []);
-    } finally {
-      setIsProcessingSelection(false);
-    }
-  }, [bills, onSelectedRowsChange]);
+  const handleSelectAll = useCallback(
+    async (e) => {
+      try {
+        setIsProcessingSelection(true);
+        const isChecked = e.target.checked;
+        const newSelectedRows = isChecked ? bills.map((_, index) => index) : [];
+        setSelectedRows(newSelectedRows);
+
+        // Batch update selected bills
+        await Promise.resolve();
+        onSelectedRowsChange(isChecked ? bills : []);
+      } finally {
+        setIsProcessingSelection(false);
+      }
+    },
+    [bills, onSelectedRowsChange]
+  );
 
   // Optimize individual row selection
-  const handleSelectRow = useCallback(async (index, e) => {
-    try {
-      e?.stopPropagation();
-      setIsProcessingSelection(true);
+  const handleSelectRow = useCallback(
+    async (index, e) => {
+      try {
+        e?.stopPropagation();
+        setIsProcessingSelection(true);
 
-      setSelectedRows(prev => {
-        const newSelectedRows = prev.includes(index)
-          ? prev.filter(i => i !== index)
-          : [...prev, index];
+        setSelectedRows((prev) => {
+          const newSelectedRows = prev.includes(index)
+            ? prev.filter((i) => i !== index)
+            : [...prev, index];
 
-        // Update selected bills data through callback
-        const selectedBills = newSelectedRows.map(idx => bills[idx]);
-        onSelectedRowsChange(selectedBills);
+          // Update selected bills data through callback
+          const selectedBills = newSelectedRows.map((idx) => bills[idx]);
+          onSelectedRowsChange(selectedBills);
 
-        return newSelectedRows;
-      });
-    } finally {
-      setIsProcessingSelection(false);
-    }
-  }, [bills, onSelectedRowsChange]);
+          return newSelectedRows;
+        });
+      } finally {
+        setIsProcessingSelection(false);
+      }
+    },
+    [bills, onSelectedRowsChange]
+  );
 
   // Optimize popup handling
   const handleShowPopup = useCallback((bill) => {
@@ -65,20 +71,26 @@ const BillTable = ({ bills, startingIndex = 0, onSelectedRowsChange }) => {
   }, []);
 
   // Memoize selection status for performance
-  const selectionStatus = useMemo(() => ({
-    totalSelected: selectedRows.length,
-    totalItems: bills.length,
-    isAllSelected: selectedRows.length === bills.length,
-    hasSelections: selectedRows.length > 0
-  }), [selectedRows.length, bills.length]);
+  const selectionStatus = useMemo(
+    () => ({
+      totalSelected: selectedRows.length,
+      totalItems: bills.length,
+      isAllSelected: selectedRows.length === bills.length,
+      hasSelections: selectedRows.length > 0,
+    }),
+    [selectedRows.length, bills.length]
+  );
 
   // Status indicator component
-  const SelectionStatus = useCallback(() => (
-    <div className="text-xs bg-white/20 backdrop-blur-sm px-3 py-1.5 rounded-full">
-      {selectionStatus.totalSelected}/{selectionStatus.totalItems} selected
-    </div>
-  ), [selectionStatus]);
-  
+  const SelectionStatus = useCallback(
+    () => (
+      <div className="text-xs bg-white/20 backdrop-blur-sm px-3 py-1.5 rounded-full">
+        {selectionStatus.totalSelected}/{selectionStatus.totalItems} selected
+      </div>
+    ),
+    [selectionStatus]
+  );
+
   return (
     <div className="w-full">
       {/* Desktop View */}
@@ -230,12 +242,12 @@ const BillTable = ({ bills, startingIndex = 0, onSelectedRowsChange }) => {
                           )}{" "}
                           {/* Debug log */}
                           <PartImage
-                              partNumber={bill.M_PART_NUMBER}
-                              partName={bill.M_PART_DESCRIPTION}
-                              width="w-20"
-                              height="h-20"
-                              className="object-cover transform transition-transform duration-300 group-hover:scale-105"
-                              showError={false}
+                            partNumber={bill.M_PART_NUMBER}
+                            partName={bill.M_PART_DESCRIPTION}
+                            width="w-20"
+                            height="h-20"
+                            className="object-cover transform transition-transform duration-300 group-hover:scale-105"
+                            showError={false}
                           />
                         </div>
                       </td>
@@ -374,14 +386,15 @@ const BillTable = ({ bills, startingIndex = 0, onSelectedRowsChange }) => {
             </div>
           </div>
         </div>
-        
-        <div className="relative p-4 space-y-4 max-w-md mx-auto">
+
+        <div className="relative p-4 space-y-4 max-w-md mx-auto mb-1">
           {bills.length > 0 ? (
             bills.map((bill, index) => (
               <Card
                 key={index}
                 bill={bill}
                 index={index}
+                startingIndex={startingIndex}
                 selectedRows={selectedRows}
                 handleSelectRow={handleSelectRow}
                 handleShowPopup={handleShowPopup}
@@ -407,10 +420,7 @@ const BillTable = ({ bills, startingIndex = 0, onSelectedRowsChange }) => {
 
       {/* Bill Detail Popup */}
       {showPopup && selectedBill && (
-        <BillDetailPopup 
-          bill={selectedBill} 
-          onClose={handleClosePopup}
-        />
+        <BillDetailPopup bill={selectedBill} onClose={handleClosePopup} />
       )}
     </div>
   );

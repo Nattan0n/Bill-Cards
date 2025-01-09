@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import LoadingPopup from "./LoadingPopup";
 
 const QrCodeSelectionPopup = ({
   isOpen,
@@ -11,6 +12,8 @@ const QrCodeSelectionPopup = ({
   const [selectedValue, setSelectedValue] = useState("");
   const [error, setError] = useState("");
   const [isClosing, setIsClosing] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [progress, setProgress] = useState(0);
 
   // Get unique values for dropdowns
   const uniquePartNumbers = [
@@ -29,81 +32,116 @@ const QrCodeSelectionPopup = ({
     setError("");
   };
 
-  const handleGenerate = () => {
-    // ถ้ามีการเลือก checkbox ให้ใช้เฉพาะ checkbox เสมอ
-    if (selectedTableRows && selectedTableRows.length > 0) {
-      console.log("Using selected rows:", selectedTableRows.length);
-      onGenerate(selectedTableRows);
+  const handleGenerate = async () => {
+    setIsLoading(true);
+    setProgress(0);
+    try {
+      let dataToGenerate = [];
+      
+      // Check for selected rows first
+      if (selectedTableRows && selectedTableRows.length > 0) {
+        dataToGenerate = selectedTableRows;
+      } 
+      // If no rows selected, check selection type
+      else if (!selectedType) {
+        setError("Please select generation type");
+        setIsLoading(false);
+        return;
+      }
+      // Handle "all" type
+      else if (selectedType === "all") {
+        dataToGenerate = bills;
+      }
+      // Handle other types that require a value
+      else if (!selectedValue) {
+        setError("Please select a value");
+        setIsLoading(false);
+        return;
+      }
+      // Filter by part number
+      else if (selectedType === "partno") {
+        dataToGenerate = bills.filter(
+          (bill) => bill.M_PART_NUMBER === selectedValue
+        );
+      }
+      // Filter by subinventory
+      else if (selectedType === "subinven") {
+        dataToGenerate = bills.filter((bill) => bill.M_SUBINV === selectedValue);
+      }
+
+      // Check if we have data to process
+      if (dataToGenerate.length === 0) {
+        setError("No matching records found");
+        setIsLoading(false);
+        return;
+      }
+
+      // Calculate processing time based on data size
+      const timePerItem = Math.max(50, Math.min(100, 1000 / dataToGenerate.length));
+      const totalTime = timePerItem * dataToGenerate.length;
+      let processedItems = 0;
+
+      // Process items with progress updates
+      for (const item of dataToGenerate) {
+        await new Promise(resolve => setTimeout(resolve, timePerItem));
+        processedItems++;
+        setProgress((processedItems / dataToGenerate.length) * 100);
+      }
+
+      // Ensure minimum loading time
+      const minimumLoadingTime = 1000;
+      const remainingTime = minimumLoadingTime - totalTime;
+      if (remainingTime > 0) {
+        await new Promise(resolve => setTimeout(resolve, remainingTime));
+      }
+
+      // Generate QR codes
+      await onGenerate(dataToGenerate);
       onClose();
-      return;
+    } catch (error) {
+      console.error("Error generating QR codes:", error);
+      setError("An error occurred while generating QR codes");
+    } finally {
+      setIsLoading(false);
+      setProgress(0);
     }
-
-    // ถ้าไม่มี checkbox แต่เลือก type
-    if (!selectedType) {
-      setError("Please select generation type");
-      return;
-    }
-
-    if (selectedType === "all") {
-      // ถ้าเลือก all และไม่มี checkbox ให้ใช้ข้อมูลทั้งหมด
-      onGenerate(bills);
-      onClose();
-      return;
-    }
-
-    // ถ้าเลือก type อื่นที่ไม่ใช่ all ต้องเลือก value
-    if (!selectedValue) {
-      setError("Please select a value");
-      return;
-    }
-
-    // กรองตาม type และ value
-    let dataToGenerate = [];
-    if (selectedType === "partno") {
-      dataToGenerate = bills.filter(
-        (bill) => bill.M_PART_NUMBER === selectedValue
-      );
-    } else if (selectedType === "subinven") {
-      dataToGenerate = bills.filter((bill) => bill.M_SUBINV === selectedValue);
-    }
-
-    if (dataToGenerate.length === 0) {
-      setError("No matching records found");
-      return;
-    }
-
-    onGenerate(dataToGenerate);
-    onClose();
   };
 
   const handleClose = () => {
-    setIsClosing(true);
-    setTimeout(() => {
-      onClose();
-      setIsClosing(false);
-    }, 500); // ให้เวลาในการเล่น animation ก่อนที่จะปิด
+    if (!isLoading) {
+      setIsClosing(true);
+      setTimeout(() => {
+        onClose();
+        setIsClosing(false);
+      }, 500); // Animation duration
+    }
   };
 
-  // Reset state เมื่อเปิด popup
+  // Reset state when popup opens
   useEffect(() => {
     if (isOpen) {
       setSelectedType("");
       setSelectedValue("");
       setError("");
+      setIsLoading(false);
+      setProgress(0);
     }
   }, [isOpen]);
 
   if (!isOpen && !isClosing) return null;
 
   return (
-    <div>
-      {/* Desktop/Mobile View */}
+    <>
+      {isLoading && <LoadingPopup progress={progress} />}
       <div className="fixed inset-0 flex items-center justify-center z-40">
+        {/* Backdrop */}
         <div
           className="absolute inset-0 bg-gray-900/45 backdrop-blur-sm transition-opacity"
-          onClick={handleClose}
+          onClick={!isLoading ? handleClose : undefined}
           aria-hidden="true"
         ></div>
+
+        {/* Modal */}
         <div
           className={`rounded-3xl overflow-hidden bg-gray-800 divide-gray-600 dark:bg-gray-800 dark:divide-gray-600 z-10 w-11/12 max-w-lg animate__animated animate__faster ${
             isClosing ? "animate__zoomOut" : "animate__zoomIn"
@@ -118,20 +156,22 @@ const QrCodeSelectionPopup = ({
                 ? `Generate QR Codes (${selectedTableRows.length} selected)`
                 : "Select QR Code Type"}
             </h2>
-            <button
-              onClick={onClose}
-              className="flex items-center px-2 py-2 rounded-lg bg-white/10 hover:bg-red-500 text-white transition-all duration-200 backdrop-blur-sm group"
-            >
-              <span className="material-symbols-outlined group-hover:rotate-90 transition-transform duration-200">
-                close
-              </span>
-            </button>
+            {!isLoading && (
+              <button
+                onClick={handleClose}
+                className="flex items-center px-2 py-2 rounded-lg bg-white/10 hover:bg-red-500 text-white transition-all duration-200 backdrop-blur-sm group"
+              >
+                <span className="material-symbols-outlined group-hover:rotate-90 transition-transform duration-200">
+                  close
+                </span>
+              </button>
+            )}
           </div>
 
           {/* Body */}
           <div className="p-6 overflow-y-auto max-h-[calc(90vh-4rem)]">
             <div className="space-y-6">
-              {/* Show selected items info if any */}
+              {/* Selected items info */}
               {selectedTableRows && selectedTableRows.length > 0 && (
                 <div className="bg-blue-100 dark:bg-blue-900 p-4 rounded-lg">
                   <p className="text-blue-800 dark:text-blue-200">
@@ -141,18 +181,21 @@ const QrCodeSelectionPopup = ({
                 </div>
               )}
 
-              {/* Selection Type Buttons - show only if no items selected */}
+              {/* Selection Type Buttons */}
               {(!selectedTableRows || selectedTableRows.length === 0) && (
                 <>
                   {["partno", "subinven", "all"].map((type) => (
                     <button
                       key={type}
                       onClick={() => handleTypeChange(type)}
+                      disabled={isLoading}
                       className={`w-full p-4 rounded-lg transition-colors duration-200 ${
                         selectedType === type
                           ? "bg-gradient-to-r from-indigo-600 via-blue-600 to-blue-800 text-white"
                           : "bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 hover:bg-gray-200"
-                      } flex items-center justify-between`}
+                      } flex items-center justify-between ${
+                        isLoading ? "opacity-50 cursor-not-allowed" : ""
+                      }`}
                     >
                       <span className="font-medium">
                         {type === "partno"
@@ -169,7 +212,7 @@ const QrCodeSelectionPopup = ({
                     </button>
                   ))}
 
-                  {/* Dropdown */}
+                  {/* Dropdown for part number or customer selection */}
                   {selectedType && selectedType !== "all" && (
                     <div className="bg-gray-100 dark:bg-gray-700 rounded-lg p-4">
                       <label className="block text-sm font-medium text-gray-500 dark:text-gray-400 uppercase mb-2">
@@ -179,7 +222,10 @@ const QrCodeSelectionPopup = ({
                       <select
                         value={selectedValue}
                         onChange={handleValueChange}
-                        className="w-full p-3 border-0 rounded-lg bg-white dark:bg-gray-600 text-gray-700 dark:text-gray-200 focus:ring-2 focus:ring-blue-500"
+                        disabled={isLoading}
+                        className={`w-full p-3 border-0 rounded-lg bg-white dark:bg-gray-600 text-gray-700 dark:text-gray-200 focus:ring-2 focus:ring-blue-500 ${
+                          isLoading ? "opacity-50 cursor-not-allowed" : ""
+                        }`}
                       >
                         <option value="">Choose option...</option>
                         {(selectedType === "partno"
@@ -209,20 +255,26 @@ const QrCodeSelectionPopup = ({
           <div className="flex justify-end space-x-2 px-6 py-4 bg-gray-100 dark:bg-gray-800">
             <button
               onClick={handleClose}
-              className="px-6 py-3 bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 rounded-lg font-medium text-gray-600 dark:text-gray-300 transition-colors duration-200"
+              disabled={isLoading}
+              className={`px-6 py-3 bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 rounded-lg font-medium text-gray-600 dark:text-gray-300 transition-colors duration-200 ${
+                isLoading ? "opacity-50 cursor-not-allowed" : ""
+              }`}
             >
               Cancel
             </button>
             <button
               onClick={handleGenerate}
-              className="px-6 py-3 bg-gradient-to-r from-indigo-600 via-blue-600 to-blue-700 text-white hover:from-blue-700 hover:via-blue-600 hover:to-indigo-700 rounded-lg font-medium transition-colors duration-200"
+              disabled={isLoading}
+              className={`px-6 py-3 bg-gradient-to-r from-indigo-600 via-blue-600 to-blue-700 text-white hover:from-blue-700 hover:via-blue-600 hover:to-indigo-700 rounded-lg font-medium transition-colors duration-200 ${
+                isLoading ? "opacity-50 cursor-not-allowed" : ""
+              }`}
             >
-              Generate
+              {isLoading ? "Generating..." : "Generate"}
             </button>
           </div>
         </div>
       </div>
-    </div>
+    </>
   );
 };
 

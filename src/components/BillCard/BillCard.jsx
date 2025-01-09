@@ -14,11 +14,45 @@ const BillCard = ({ bills }) => {
   const [selectedBills, setSelectedBills] = useState([]);
   const [dateFilter, setDateFilter] = useState(null);
   const [selectedTableRows, setSelectedTableRows] = useState([]);
+  const [selectedSubInv, setSelectedSubInv] = useState('GP-DAIK');
   const itemsPerPage = 8;
 
-  // คำนวณยอดรวมทั้งหมดแยกตาม part number
+  // Callbacks
+  const handleSubInvChange = useCallback((subInv) => {
+    setSelectedSubInv(subInv);
+    setCurrentPage(1);
+    setSelectedBills([]);
+  }, []);
+
+  const handleFilterChange = useCallback((dateRange) => {
+    setDateFilter(dateRange);
+    setCurrentPage(1);
+    setSelectedBills([]);
+  }, []);
+
+  const handleSelectedRowsChange = useCallback((selectedRows) => {
+    setSelectedBills(selectedRows);
+    setSelectedTableRows(selectedRows);
+  }, []);
+
+  const debouncedSearch = useMemo(
+    () =>
+      debounce((searchTerm) => {
+        setSearch(searchTerm);
+        setCurrentPage(1);
+        setSelectedBills([]);
+      }, 300),
+    []
+  );
+
+  const handleSearch = useCallback((searchTerm) => {
+    debouncedSearch(searchTerm);
+  }, [debouncedSearch]);
+
+  // Memoized data
   const totalQuantityByPart = useMemo(() => {
     const totals = new Map();
+    if (!bills?.length) return totals;
     
     bills.forEach(bill => {
       const partNumber = bill.M_PART_NUMBER;
@@ -31,45 +65,50 @@ const BillCard = ({ bills }) => {
     return totals;
   }, [bills]);
 
-  // ใช้ filter hook สำหรับการแสดงผลตาม filter
-  const filteredBills = useBillFilter(bills, search, dateFilter);
+  // Filtered and grouped data
+  const rawFilteredBills = useBillFilter(bills, search, dateFilter);
 
-  // Group bills และรวมข้อมูลยอดรวมทั้งหมด
+  const filteredBills = useMemo(() => {
+    if (!rawFilteredBills) return [];
+    return selectedSubInv
+      ? rawFilteredBills.filter(bill => bill.M_SUBINV === selectedSubInv)
+      : rawFilteredBills;
+  }, [rawFilteredBills, selectedSubInv]);
+
   const groupedBills = useMemo(() => {
+    if (!filteredBills?.length) return [];
     const partMap = new Map();
 
     filteredBills.forEach((bill) => {
-      if (!partMap.has(bill.M_PART_NUMBER)) {
-        const relatedBills = filteredBills.filter(
-          (b) => b.M_PART_NUMBER === bill.M_PART_NUMBER
-        );
+      if (!bill?.M_PART_NUMBER || partMap.has(bill.M_PART_NUMBER)) return;
 
-        const sortedBills = relatedBills.sort((a, b) => {
-          const dateA = parseDate(a.M_DATE);
-          const dateB = parseDate(b.M_DATE);
-          if (!dateA || !dateB) return 0;
-          return dateB.getTime() - dateA.getTime();
-        });
+      const relatedBills = filteredBills.filter(
+        (b) => b.M_PART_NUMBER === bill.M_PART_NUMBER
+      );
 
-        // ยอดรวมจาก bills ที่ผ่าน filter
-        const filteredTotal = relatedBills.reduce(
-          (sum, b) => sum + Number(b.M_QTY || 0),
-          0
-        );
+      const sortedBills = relatedBills.sort((a, b) => {
+        const dateA = parseDate(a.M_DATE);
+        const dateB = parseDate(b.M_DATE);
+        if (!dateA || !dateB) return 0;
+        return dateB.getTime() - dateA.getTime();
+      });
 
-        // ยอดรวมทั้งหมดจากทุก bills
-        const totalQuantity = totalQuantityByPart.get(bill.M_PART_NUMBER) || 0;
+      const filteredTotal = relatedBills.reduce(
+        (sum, b) => sum + Number(b.M_QTY || 0),
+        0
+      );
 
-        partMap.set(bill.M_PART_NUMBER, {
-          ...sortedBills[0],
-          totalQty: totalQuantity, // ยอดรวมทั้งหมดในระบบ
-          filteredQty: filteredTotal, // ยอดรวมตาม filter
-          billCount: relatedBills.length,
-          relatedBills: sortedBills,
-          latestDate: parseDate(sortedBills[0].M_DATE),
-          allRelatedBills: bills.filter(b => b.M_PART_NUMBER === bill.M_PART_NUMBER) // เก็บ bills ทั้งหมดไว้ด้วย
-        });
-      }
+      const totalQuantity = totalQuantityByPart.get(bill.M_PART_NUMBER) || 0;
+
+      partMap.set(bill.M_PART_NUMBER, {
+        ...sortedBills[0],
+        totalQty: totalQuantity,
+        filteredQty: filteredTotal,
+        billCount: relatedBills.length,
+        relatedBills: sortedBills,
+        latestDate: parseDate(sortedBills[0].M_DATE),
+        allRelatedBills: bills.filter(b => b.M_PART_NUMBER === bill.M_PART_NUMBER)
+      });
     });
 
     return Array.from(partMap.values()).sort((a, b) => {
@@ -80,36 +119,7 @@ const BillCard = ({ bills }) => {
     });
   }, [filteredBills, totalQuantityByPart, bills]);
 
-  // Debounced search handler
-  const debouncedSearch = useCallback(
-    debounce((searchTerm) => {
-      setSearch(searchTerm);
-      setCurrentPage(1);
-      setSelectedBills([]);
-    }, 300),
-    []
-  );
-
-  const handleSearch = useCallback(
-    (searchTerm) => {
-      debouncedSearch(searchTerm);
-    },
-    [debouncedSearch]
-  );
-
-  const handleSelectedRowsChange = useCallback((selectedRows) => {
-    requestAnimationFrame(() => {
-      setSelectedBills(selectedRows);
-      setSelectedTableRows(selectedRows);
-    });
-  }, []);
-
-  const handleFilterChange = useCallback((dateRange) => {
-    setDateFilter(dateRange);
-    setCurrentPage(1);
-    setSelectedBills([]);
-  }, []);
-
+  // Export handler
   const exportToExcel = useCallback(async () => {
     try {
       const dataToExport = selectedBills.length > 0 ? selectedBills : groupedBills;
@@ -117,7 +127,7 @@ const BillCard = ({ bills }) => {
     } catch (error) {
       console.error("Export failed:", error);
     }
-  }, [groupedBills, selectedBills]);
+  }, [selectedBills, groupedBills]);
 
   // Pagination calculations
   const totalItems = groupedBills.length;
@@ -126,15 +136,12 @@ const BillCard = ({ bills }) => {
   const indexOfFirstBill = indexOfLastBill - itemsPerPage;
   const currentBills = groupedBills.slice(indexOfFirstBill, indexOfLastBill);
 
-  const handlePageChange = useCallback(
-    (page) => {
-      if (page >= 1 && page <= totalPages) {
-        setCurrentPage(page);
-        setSelectedBills([]);
-      }
-    },
-    [totalPages]
-  );
+  const handlePageChange = useCallback((page) => {
+    if (page >= 1 && page <= totalPages) {
+      setCurrentPage(page);
+      setSelectedBills([]);
+    }
+  }, [totalPages]);
 
   return (
     <div>
@@ -150,6 +157,8 @@ const BillCard = ({ bills }) => {
                     onExport={exportToExcel}
                     bills={bills}
                     onFilterChange={handleFilterChange}
+                    onSelectSubInv={handleSubInvChange}
+                    selectedSubInv={selectedSubInv}
                     isFiltered={!!dateFilter}
                     defaultDates={dateFilter}
                     filteredBills={groupedBills}
@@ -159,7 +168,7 @@ const BillCard = ({ bills }) => {
                     bills={currentBills}
                     startingIndex={indexOfFirstBill}
                     onSelectedRowsChange={handleSelectedRowsChange}
-                    key={`${currentPage}-${dateFilter?.startDate}-${dateFilter?.endDate}`}
+                    key={`${currentPage}-${dateFilter?.startDate}-${dateFilter?.endDate}-${selectedSubInv}`}
                     allBills={bills}
                   />
                   <Pagination
@@ -185,6 +194,8 @@ const BillCard = ({ bills }) => {
               onExport={exportToExcel}
               bills={bills}
               onFilterChange={handleFilterChange}
+              onSelectSubInv={handleSubInvChange}
+              selectedSubInv={selectedSubInv}
               isFiltered={!!dateFilter}
               defaultDates={dateFilter}
               selectedTableRows={selectedTableRows}
@@ -198,7 +209,7 @@ const BillCard = ({ bills }) => {
                     bills={currentBills}
                     startingIndex={indexOfFirstBill}
                     onSelectedRowsChange={handleSelectedRowsChange}
-                    key={`${currentPage}-${search}-${dateFilter?.startDate}-${dateFilter?.endDate}`}
+                    key={`${currentPage}-${search}-${dateFilter?.startDate}-${dateFilter?.endDate}-${selectedSubInv}`}
                     allBills={bills}
                   />
                   <Pagination

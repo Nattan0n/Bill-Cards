@@ -14,7 +14,7 @@ export const billCardService = {
 
         try {
             isFetching = true;
-            console.log(`Fetching data for ${subInventory || 'all'}...`);
+            // console.log(`Fetching data for ${subInventory || 'all'}...`);
 
             // เลือก endpoint ตาม subInventory
             const url = subInventory 
@@ -22,7 +22,7 @@ export const billCardService = {
                 : '/api/oracle/bill-cards'; // เปลี่ยนเป็น /data endpoint เสมอ
 
             const response = await axios.get(url);
-            console.log('API Response:', response.data);
+            // console.log('API Response:', response.data);
 
             // ตรวจสอบและแปลงข้อมูล
             const billCardsData = response.data.bill_cards || [];
@@ -46,7 +46,7 @@ export const billCardService = {
 
             // เก็บข้อมูลใน cache
             billCardsCache.set(cacheKey, mappedData);
-            console.log(`Cached ${mappedData.length} records for ${cacheKey}`);
+            // console.log(`Cached ${mappedData.length} records for ${cacheKey}`);
             
             return mappedData;
         } catch (error) {

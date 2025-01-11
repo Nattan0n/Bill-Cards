@@ -201,7 +201,7 @@ const BillCard = () => {
   return (
     <div className="min-h-screen">
       <div className="max-w-8xl mx-auto sm:px-6 lg:px-8 md:py-6 overflow-y-auto h-screen">
-        <div className="bg-white shadow-sm rounded-3xl">
+        <div className="bg-white shadow-sm rounded-3xl mb-20">
           <div className=" lg:p-6 text-gray-900">
             {/* Search Section */}
             <div className="sticky top-0 z-10">

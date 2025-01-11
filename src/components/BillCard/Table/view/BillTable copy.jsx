@@ -1,50 +1,95 @@
 // components/BillCard/Table/view/BillTable.jsx
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useMemo } from "react";
 import BillDetailPopup from "./BillDetail/BillDetailPopup";
 import Card from "../common/Card";
+import { PartImage } from "../../../../services/partImageService";
 
 const BillTable = ({ bills, startingIndex = 0, onSelectedRowsChange }) => {
   const [selectedBill, setSelectedBill] = useState(null);
   const [showPopup, setShowPopup] = useState(false);
   const [selectedRows, setSelectedRows] = useState([]);
+  const [isProcessingSelection, setIsProcessingSelection] = useState(false);
 
+  // Memoize selected bills data
+  const selectedBillsData = useMemo(() => {
+    return selectedRows.map((index) => bills[index]);
+  }, [bills, selectedRows]);
+
+  // Optimize select all handler
   const handleSelectAll = useCallback(
-    (e) => {
-      const isChecked = e.target.checked;
-      const newSelectedRows = isChecked ? bills.map((_, index) => index) : [];
-      setSelectedRows(newSelectedRows);
-      onSelectedRowsChange(isChecked ? bills : []);
+    async (e) => {
+      try {
+        setIsProcessingSelection(true);
+        const isChecked = e.target.checked;
+        const newSelectedRows = isChecked ? bills.map((_, index) => index) : [];
+        setSelectedRows(newSelectedRows);
+
+        // Batch update selected bills
+        await Promise.resolve();
+        onSelectedRowsChange(isChecked ? bills : []);
+      } finally {
+        setIsProcessingSelection(false);
+      }
     },
     [bills, onSelectedRowsChange]
   );
 
+  // Optimize individual row selection
   const handleSelectRow = useCallback(
-    (index, e) => {
-      e?.stopPropagation();
+    async (index, e) => {
+      try {
+        e?.stopPropagation();
+        setIsProcessingSelection(true);
 
-      setSelectedRows((prev) => {
-        const newSelectedRows = prev.includes(index)
-          ? prev.filter((i) => i !== index)
-          : [...prev, index];
+        setSelectedRows((prev) => {
+          const newSelectedRows = prev.includes(index)
+            ? prev.filter((i) => i !== index)
+            : [...prev, index];
 
-        const selectedBills = newSelectedRows.map((idx) => bills[idx]);
-        onSelectedRowsChange(selectedBills);
+          // Update selected bills data through callback
+          const selectedBills = newSelectedRows.map((idx) => bills[idx]);
+          onSelectedRowsChange(selectedBills);
 
-        return newSelectedRows;
-      });
+          return newSelectedRows;
+        });
+      } finally {
+        setIsProcessingSelection(false);
+      }
     },
     [bills, onSelectedRowsChange]
   );
 
-  const handleShowPopup = (bill) => {
+  // Optimize popup handling
+  const handleShowPopup = useCallback((bill) => {
     setSelectedBill(bill);
     setShowPopup(true);
-  };
+  }, []);
 
-  const handleClosePopup = () => {
+  const handleClosePopup = useCallback(() => {
     setShowPopup(false);
     setSelectedBill(null);
-  };
+  }, []);
+
+  // Memoize selection status for performance
+  const selectionStatus = useMemo(
+    () => ({
+      totalSelected: selectedRows.length,
+      totalItems: bills.length,
+      isAllSelected: selectedRows.length === bills.length,
+      hasSelections: selectedRows.length > 0,
+    }),
+    [selectedRows.length, bills.length]
+  );
+
+  // Status indicator component
+  const SelectionStatus = useCallback(
+    () => (
+      <div className="text-xs bg-white/20 backdrop-blur-sm px-3 py-1.5 rounded-full">
+        {selectionStatus.totalSelected}/{selectionStatus.totalItems} selected
+      </div>
+    ),
+    [selectionStatus]
+  );
 
   return (
     <div className="w-full">
@@ -119,9 +164,6 @@ const BillTable = ({ bills, startingIndex = 0, onSelectedRowsChange }) => {
                   <th className="p-4 text-xs font-semibold text-left text-gray-600 uppercase">
                     SubInventory
                   </th>
-                  {/* <th className="p-4 text-xs font-semibold text-left text-gray-600 uppercase">
-                    Source ID
-                  </th> */}
                   <th className="p-4 text-xs font-semibold text-left text-gray-600 uppercase">
                     Transaction Type
                   </th>
@@ -149,7 +191,7 @@ const BillTable = ({ bills, startingIndex = 0, onSelectedRowsChange }) => {
                             <input
                               type="checkbox"
                               checked={selectedRows.includes(index)}
-                              onChange={() => handleSelectRow(index)}
+                              onChange={(e) => handleSelectRow(index, e)}
                               className="before:content[''] peer relative h-5 w-5 cursor-pointer appearance-none rounded-md border border-gray-300 transition-all before:absolute before:top-2/4 before:left-2/4 before:block before:h-12 before:w-12 before:-translate-y-2/4 before:-translate-x-2/4 before:rounded-full before:bg-blue-gray-500 before:opacity-0 before:transition-opacity hover:before:opacity-10 checked:border-blue-500 checked:bg-blue-500 checked:before:bg-blue-500"
                             />
                             <span className="pointer-events-none absolute top-2/4 left-2/4 -translate-y-2/4 -translate-x-2/4 text-white opacity-0 transition-opacity peer-checked:opacity-100">
@@ -172,17 +214,40 @@ const BillTable = ({ bills, startingIndex = 0, onSelectedRowsChange }) => {
                         </div>
                       </td>
                       <td className="p-4 text-sm font-medium text-gray-900">
-                        #{startingIndex + index + 1}
+                        {startingIndex + index + 1}
                       </td>
-                      <td className="p-4">
+                      {/* <td className="p-4">
                         <div className="w-20 h-20 rounded-xl overflow-hidden bg-gray-50 border border-gray-100 group-hover:border-blue-100 transition-all duration-300 shadow-sm">
                           <img
-                            src={
-                              bill.M_PART_IMG ||
-                              "https://via.placeholder.com/64"
-                            }
-                            alt={bill.M_PART_IMG ? "Part" : "No Image"}
+                            src={bill.M_PART_IMG || "https://via.placeholder.com/64"}
+                            alt={bill.M_PART_DESCRIPTION || "Part image"}
                             className="w-full h-full object-cover transform transition-transform duration-300 group-hover:scale-105"
+                          />
+                        </div>
+                      </td> */}
+                      {/* <td className="p-4">
+                        <div className="w-20 h-20 rounded-xl overflow-hidden bg-gray-50 border border-gray-100 group-hover:border-blue-100 transition-all duration-300 shadow-sm">
+                          <img
+                            src={"http://127.0.0.1:8000/storage/images/KMks9OZEMYhO7Xilev6uykB48gRW1DvrntbEPx1M.png"}
+                            alt={bill.M_PART_DESCRIPTION || "Part image"}
+                            className="w-full h-full object-cover transform transition-transform duration-300 group-hover:scale-105"
+                          />
+                        </div>
+                      </td> */}
+                      <td className="p-4">
+                        <div className="w-20 h-20 rounded-xl overflow-hidden bg-gray-100 border border-gray-100 group-hover:border-blue-100 transition-all duration-300 shadow-sm">
+                          {console.log(
+                            "Rendering image for part:",
+                            bill.m_part_number
+                          )}{" "}
+                          {/* Debug log */}
+                          <PartImage
+                            partNumber={bill.M_PART_NUMBER}
+                            partName={bill.M_PART_DESCRIPTION}
+                            width="w-20"
+                            height="h-20"
+                            className="object-cover transform transition-transform duration-300 group-hover:scale-105"
+                            showError={false}
                           />
                         </div>
                       </td>
@@ -199,9 +264,6 @@ const BillTable = ({ bills, startingIndex = 0, onSelectedRowsChange }) => {
                           {bill.M_SUBINV}
                         </span>
                       </td>
-                      {/* <td className="p-4 text-sm text-gray-600">
-                        {bill.M_SOURCE_ID}
-                      </td> */}
                       <td className="p-4">
                         <span className="inline-flex items-center px-2.5 py-1 rounded-lg bg-indigo-50 text-xs font-medium text-indigo-700">
                           {bill.TRANSACTION_TYPE_NAME}
@@ -218,21 +280,15 @@ const BillTable = ({ bills, startingIndex = 0, onSelectedRowsChange }) => {
                       <td className="p-4">
                         <span
                           className={`inline-flex items-center px-2.5 py-1 rounded-lg ${
-                            Number(bill.M_QTY) > 0
+                            bill.totalQty > 0
                               ? "bg-green-50 text-green-700"
-                              : Number(bill.M_QTY) === 0
-                              ? "bg-yellow-50 text-yellow-700"
                               : "bg-red-50 text-red-700"
                           } text-xs font-medium`}
                         >
                           <span className="material-symbols-outlined text-sm mr-1">
-                            {Number(bill.M_QTY) > 0
-                              ? "add_circle"
-                              : Number(bill.M_QTY) === 0
-                              ? "hourglass_empty"
-                              : "remove_circle"}
+                            {bill.totalQty > 0 ? "add_circle" : "remove_circle"}
                           </span>
-                          {bill.M_QTY}
+                          {bill.totalQty}
                         </span>
                       </td>
                       <td className="p-4">
@@ -272,8 +328,7 @@ const BillTable = ({ bills, startingIndex = 0, onSelectedRowsChange }) => {
       </div>
 
       {/* Mobile View */}
-      <div className="block md:hidden bg-gray-100 min-h-screen">
-        {/* Header Section */}
+      <div className="block md:hidden">
         <div className="bg-gradient-to-r from-indigo-600 via-blue-600 to-blue-800 px-4 py-4 shadow-lg animate-gradient sticky top-0 z-0">
           <div className="max-w-md mx-auto">
             <h2 className="text-xl font-semibold text-white flex items-center">
@@ -283,15 +338,15 @@ const BillTable = ({ bills, startingIndex = 0, onSelectedRowsChange }) => {
               <div>
                 <p className="text-lg font-bold">Part List</p>
                 <p className="text-xs text-blue-100 mt-0.5">
-                  Manage your inventory
+                  Manage bill card inventory
                 </p>
               </div>
             </h2>
           </div>
         </div>
 
-        {/* Select All Section */}
-        <div className="sticky top-[72px] z-0 bg-white/90 backdrop-blur-md shadow-md border-b border-gray-200">
+        {/* Select All Section for Mobile */}
+        <div className="sticky bottom-0 z-0 bg-white/90 backdrop-blur-md shadow-md border-t border-gray-200">
           <div className="max-w-md mx-auto px-4 py-3">
             <div className="flex items-center justify-between">
               <label className="flex items-center space-x-3 group cursor-pointer">
@@ -319,6 +374,9 @@ const BillTable = ({ bills, startingIndex = 0, onSelectedRowsChange }) => {
                     </svg>
                   </span>
                 </div>
+                <span className="text-sm font-medium text-gray-700">
+                  Select All
+                </span>
               </label>
               <div className="flex items-center space-x-2">
                 <span className="text-xs bg-gradient-to-r from-indigo-600 to-blue-700 text-white px-3 py-1.5 rounded-full font-medium shadow-sm">
@@ -329,14 +387,14 @@ const BillTable = ({ bills, startingIndex = 0, onSelectedRowsChange }) => {
           </div>
         </div>
 
-        {/* Cards Container */}
-        <div className="relative p-8 space-y-6 max-w-md mx-auto pb-20 z-0 bg-gradient-to-r from-indigo-50 via-blue-50 to-blue-50 ">
+        <div className="relative p-4 space-y-4 max-w-md mx-auto mb-1">
           {bills.length > 0 ? (
             bills.map((bill, index) => (
               <Card
                 key={index}
                 bill={bill}
                 index={index}
+                startingIndex={startingIndex}
                 selectedRows={selectedRows}
                 handleSelectRow={handleSelectRow}
                 handleShowPopup={handleShowPopup}
@@ -360,8 +418,8 @@ const BillTable = ({ bills, startingIndex = 0, onSelectedRowsChange }) => {
         </div>
       </div>
 
-      {/* Show Popup if active */}
-      {showPopup && (
+      {/* Bill Detail Popup */}
+      {showPopup && selectedBill && (
         <BillDetailPopup bill={selectedBill} onClose={handleClosePopup} />
       )}
     </div>

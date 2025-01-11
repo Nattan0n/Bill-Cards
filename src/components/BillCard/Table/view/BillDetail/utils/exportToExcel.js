@@ -1,4 +1,3 @@
-// components/BillCard/view/BillDetail/utils/exportToExcel.js
 import * as ExcelJS from "exceljs";
 import Swal from 'sweetalert2';
 
@@ -36,9 +35,9 @@ export const exportToExcel = async (
     ]);
     worksheet.addRow([]); // Empty row for spacing
 
-    // Define columns
+    // Define columns - เปลี่ยนจาก ID เป็น No.
     const headers = [
-      { header: "ID", key: "id", width: 10 },
+      { header: "No.", key: "no", width: 10 },
       { header: "Date", key: "date", width: 20 },
       { header: "Quantity In/Out", key: "quantity", width: 15 },
       { header: "Plan ID", key: "planId", width: 15 },
@@ -66,15 +65,15 @@ export const exportToExcel = async (
       cell.alignment = { vertical: "middle", horizontal: "center" };
     });
 
-    // Add data rows
-    inventoryWithRemaining.forEach((item) => {
+    // Add data rows - เพิ่ม index + 1 เป็นลำดับที่
+    inventoryWithRemaining.forEach((item, index) => {
       const row = worksheet.addRow([
-        item.id,
+        index + 1, // ใช้ index + 1 แทน item.id
         item.date_time,
         item.quantity_sold,
         item.plan_id,
         item.quantity_remaining,
-        item.signature,
+        item.username,
       ]);
 
       // Style data cells

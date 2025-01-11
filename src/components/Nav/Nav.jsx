@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { NavLink } from "react-router-dom";
 import axios from "axios";
 import LogoIcon from "../../assets/images/IPlan_Logo.png";
@@ -8,6 +8,18 @@ const Navigation = ({ user, roles, onLogout }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [isOpenHamburger, setIsOpenHamburger] = useState(false);
   const [isOpenProfile, setIsOpenProfile] = useState(null);
+  const [isMenuVisible, setIsMenuVisible] = useState(false);
+
+  useEffect(() => {
+    if (isOpenHamburger) {
+      setIsMenuVisible(true);
+    } else {
+      const timer = setTimeout(() => {
+        setIsMenuVisible(false);
+      }, 300);
+      return () => clearTimeout(timer);
+    }
+  }, [isOpenHamburger]);
 
   const checkRole = (rolesNeeded) => {
     if (!roles) return false;
@@ -16,11 +28,9 @@ const Navigation = ({ user, roles, onLogout }) => {
 
   const handleNavigate = async (url) => {
     try {
-      // เรียก CSRF cookie ก่อน
       await axios.get("http://129.200.6.50:83/sanctum/csrf-cookie", {
         withCredentials: true,
       });
-      // redirect ไปยัง URL ที่ต้องการ
       window.location.href = url;
     } catch (error) {
       console.error("Navigation error:", error);
@@ -30,7 +40,6 @@ const Navigation = ({ user, roles, onLogout }) => {
   const handleLogout = async () => {
     try {
       await authService.logout();
-      // รอให้ logout สำเร็จก่อนแล้วค่อย redirect
       setTimeout(() => {
         window.location.href = "http://129.200.6.50:83/login";
       }, 100);
@@ -48,7 +57,9 @@ const Navigation = ({ user, roles, onLogout }) => {
             {/* Logo */}
             <div className="shrink-0 flex items-center">
               <button
-                onClick={() => window.location.href = "http://129.200.6.50:83/landing" }
+                onClick={() =>
+                  (window.location.href = "http://129.200.6.50:83/landing")
+                }
               >
                 <img
                   src={LogoIcon}
@@ -62,7 +73,9 @@ const Navigation = ({ user, roles, onLogout }) => {
             {checkRole(["plAdmin", "plSuperAdmin", "superAdmin"]) && (
               <div className="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex">
                 <button
-                  onClick={() => window.location.href = "http://129.200.6.50:83/plan" }
+                  onClick={() =>
+                    (window.location.href = "http://129.200.6.50:83/plan")
+                  }
                   className="inline-flex items-center px-1 pt-1 border-b-2 border-transparent text-sm font-medium leading-5 text-gray-500 hover:text-gray-700 hover:border-gray-300 focus:outline-none focus:text-gray-700 focus:border-gray-300 transition duration-150 ease-in-out"
                 >
                   Plan
@@ -73,7 +86,9 @@ const Navigation = ({ user, roles, onLogout }) => {
             {checkRole(["plAdmin", "plSuperAdmin", "superAdmin"]) && (
               <div className="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex">
                 <button
-                  onClick={() => window.location.href = "http://129.200.6.50:83/part" }
+                  onClick={() =>
+                    (window.location.href = "http://129.200.6.50:83/part")
+                  }
                   className="inline-flex items-center px-1 pt-1 border-b-2 border-transparent text-sm font-medium leading-5 text-gray-500 hover:text-gray-700 hover:border-gray-300 focus:outline-none focus:text-gray-700 focus:border-gray-300 transition duration-150 ease-in-out"
                 >
                   AddPart
@@ -92,7 +107,7 @@ const Navigation = ({ user, roles, onLogout }) => {
               <div className="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex">
                 <button
                   onClick={() =>
-                    window.location.href = "http://129.200.6.50:83/listplan" 
+                    (window.location.href = "http://129.200.6.50:83/listplan")
                   }
                   className="inline-flex items-center px-1 pt-1 border-b-2 border-transparent text-sm font-medium leading-5 text-gray-500 hover:text-gray-700 hover:border-gray-300 focus:outline-none focus:text-gray-700 focus:border-gray-300 transition duration-150 ease-in-out"
                 >
@@ -104,7 +119,9 @@ const Navigation = ({ user, roles, onLogout }) => {
             {checkRole(["scanner"]) && (
               <div className="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex">
                 <button
-                  onClick={() => window.location.href = "http://129.200.6.50:83/scan"}
+                  onClick={() =>
+                    (window.location.href = "http://129.200.6.50:83/scan")
+                  }
                   className="inline-flex items-center px-1 pt-1 border-b-2 border-transparent text-sm font-medium leading-5 text-gray-500 hover:text-gray-700 hover:border-gray-300 focus:outline-none focus:text-gray-700 focus:border-gray-300 transition duration-150 ease-in-out"
                 >
                   Scanconfirm
@@ -115,7 +132,9 @@ const Navigation = ({ user, roles, onLogout }) => {
             {checkRole(["lock"]) && (
               <div className="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex">
                 <button
-                  onClick={() => window.location.href = "http://129.200.6.50:83/unlock"}
+                  onClick={() =>
+                    (window.location.href = "http://129.200.6.50:83/unlock")
+                  }
                   className="inline-flex items-center px-1 pt-1 border-b-2 border-transparent text-sm font-medium leading-5 text-gray-500 hover:text-gray-700 hover:border-gray-300 focus:outline-none focus:text-gray-700 focus:border-gray-300 transition duration-150 ease-in-out"
                 >
                   Unlock
@@ -125,7 +144,9 @@ const Navigation = ({ user, roles, onLogout }) => {
 
             <div className="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex">
               <button
-                onClick={() => window.location.href = "http://129.200.6.50:83/history" }
+                onClick={() =>
+                  (window.location.href = "http://129.200.6.50:83/history")
+                }
                 className="inline-flex items-center px-1 pt-1 border-b-2 border-transparent text-sm font-medium leading-5 text-gray-500 hover:text-gray-700 hover:border-gray-300 focus:outline-none focus:text-gray-700 focus:border-gray-300 transition duration-150 ease-in-out"
               >
                 History
@@ -135,7 +156,9 @@ const Navigation = ({ user, roles, onLogout }) => {
             {checkRole(["plAdmin", "plSuperAdmin", "superAdmin"]) && (
               <div className="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex">
                 <button
-                  onClick={() => window.location.href = "http://129.200.6.50:83/image"}
+                  onClick={() =>
+                    (window.location.href = "http://129.200.6.50:83/image")
+                  }
                   className="inline-flex items-center px-1 pt-1 border-b-2 border-transparent text-sm font-medium leading-5 text-gray-500 hover:text-gray-700 hover:border-gray-300 focus:outline-none focus:text-gray-700 focus:border-gray-300 transition duration-150 ease-in-out"
                 >
                   AddImage
@@ -147,7 +170,7 @@ const Navigation = ({ user, roles, onLogout }) => {
               <div className="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex">
                 <button
                   onClick={() =>
-                    window.location.href = "http://129.200.6.50:83/createuser"
+                    (window.location.href = "http://129.200.6.50:83/createuser")
                   }
                   className="inline-flex items-center px-1 pt-1 border-b-2 border-transparent text-sm font-medium leading-5 text-gray-500 hover:text-gray-700 hover:border-gray-300 focus:outline-none focus:text-gray-700 focus:border-gray-300 transition duration-150 ease-in-out"
                 >
@@ -238,14 +261,12 @@ const Navigation = ({ user, roles, onLogout }) => {
       </div>
 
       {/* Responsive Navigation Menu */}
-      {isOpenHamburger && (
+      {isMenuVisible && (
         <>
           {/* Overlay */}
           <div
-            className={`fixed inset-0 bg-gray-900/50 backdrop-blur-sm z-40 animate__animated ${
-              isOpenHamburger
-                ? "animate__fadeIn animate__faster"
-                : "animate__fadeOut"
+            className={`fixed inset-0 bg-gray-900/50 backdrop-blur-sm z-40 animate__animated animate__faster ${
+              isOpenHamburger ? "animate__fadeIn" : "animate__fadeOut"
             }`}
             onClick={() => setIsOpenHamburger(false)}
           ></div>
@@ -253,41 +274,42 @@ const Navigation = ({ user, roles, onLogout }) => {
           {/* Menu Panel */}
           <div
             className={`fixed top-0 right-0 w-72 h-full bg-white shadow-xl z-50 
-            transform transition-all duration-300 animate__animated animate__faster
-            ${
+            animate__animated animate__faster ${
               isOpenHamburger
                 ? "animate__slideInRight"
                 : "animate__slideOutRight"
             }`}
           >
             {/* Header */}
-            <div className="flex justify-between items-center p-4 border-b border-gray-100">
-              <h2 className="text-lg font-semibold text-gray-800">Menu</h2>
+            <div className="flex justify-between items-center p-4 border-b border-gray-100 bg-gradient-to-r from-indigo-600 via-blue-600 to-blue-800 text-white">
+              <h2 className="text-lg font-semibold">Menu</h2>
               <button
                 onClick={() => setIsOpenHamburger(false)}
-                className="p-2 rounded-xl text-gray-500 hover:bg-gray-50 transition-colors duration-200"
+                className="flex items-center px-2 py-2 rounded-lg bg-white/10 hover:bg-red-500 text-white transition-all duration-200 backdrop-blur-sm group"
               >
-                <svg
-                  className="h-5 w-5"
-                  stroke="currentColor"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth="2"
-                    d="M6 18L18 6M6 6l12 12"
-                  />
-                </svg>
+                <span className="material-symbols-outlined group-hover:rotate-90 transition-transform duration-200">
+                  close
+                </span>
               </button>
             </div>
 
             {/* Menu Items */}
             <div className="py-3 px-3">
+              {/* History Link */}
+              <NavLink
+                to="http://129.200.6.50:83/history"
+                className="flex items-center w-full px-4 py-2.5 text-sm text-gray-700 rounded-lg hover:bg-blue-50 transition-colors duration-200 mb-2"
+                onClick={() => setIsOpenHamburger(false)}
+              >
+                <span className="material-symbols-outlined mr-3 text-blue-600">
+                  history
+                </span>
+                <span>History</span>
+              </NavLink>
+
               {/* Bill Card Link */}
               <NavLink
-                to="iplan/billcard"
+                to="http://129.200.6.52/iplan/billcard"
                 className="flex items-center w-full px-4 py-2.5 text-sm text-gray-700 rounded-lg hover:bg-blue-50 transition-colors duration-200"
                 onClick={() => setIsOpenHamburger(false)}
               >
@@ -296,7 +318,8 @@ const Navigation = ({ user, roles, onLogout }) => {
                 </span>
                 <span>Bill Card</span>
               </NavLink>
-
+              
+              <div className="my-2 border-t border-gray-200"></div>
               {/* Profile Section */}
               <div className="mt-2">
                 <button
@@ -327,11 +350,11 @@ const Navigation = ({ user, roles, onLogout }) => {
                 {/* Logout Button */}
                 {isOpenProfile && (
                   <button
-                    onClick={() => {
-                      onLogout();
-                      setIsOpenHamburger(false);
-                      setIsOpenProfile(false);
-                    }}
+                  onClick={() => {
+                    handleLogout();
+                    setIsOpenHamburger(false);
+                    setIsOpenProfile(false);
+                  }}
                     className="flex items-center w-full px-4 py-2.5 mt-1 text-sm text-white bg-red-500 rounded-lg hover:bg-red-600 transition-colors duration-200"
                   >
                     <span className="material-symbols-outlined mr-3">
@@ -348,4 +371,5 @@ const Navigation = ({ user, roles, onLogout }) => {
     </nav>
   );
 };
+
 export default Navigation;

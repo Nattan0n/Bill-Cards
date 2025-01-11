@@ -1,15 +1,17 @@
+// components/BillCard/Search/view/BillSearch.jsx
 import React, { useState, useRef } from 'react';
 import { SearchInput, ActionButtons, MobileDropdownMenu } from '../common';
 import { useClickOutside } from '../../../../hook/useClickOutside';
 import ScanQrCodePopup from "../../QRCode/ScanQrCodePopup";
 import QrCodePopup from "../../QRCode/QrCodePopup";
 import QrCodeSelectionPopup from "../../QRCode/QrCodeSelectionPopup";
-import DateFilterPopup from "./DateFilterPopup";
+import DateFilterPopup from "../view/DateFilterPopup";
 
 const BillSearch = ({
   onSearch,
   onExport,
   bills,
+  inventories, // เพิ่ม prop inventories
   onFilterChange,
   onSelectSubInv,
   selectedSubInv,
@@ -18,7 +20,6 @@ const BillSearch = ({
   filteredBills,
   selectedTableRows,
 }) => {
-  // States
   const [searchTerm, setSearchTerm] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [showQrPopup, setShowQrPopup] = useState(false);
@@ -49,7 +50,7 @@ const BillSearch = ({
 
   const handleOpenQrSelection = () => {
     setShowQrSelectionPopup(true);
-    setIsGeneratingQr(false); // Reset loading state
+    setIsGeneratingQr(false);
   };
 
   const handleCloseQrSelection = () => {
@@ -61,18 +62,12 @@ const BillSearch = ({
   const handleGenerateQr = async (selectedBills) => {
     try {
       setIsGeneratingQr(true);
-      // สร้าง delay เล็กน้อยเพื่อให้ loading state ทำงาน
       await new Promise(resolve => setTimeout(resolve, 100));
-      
-      // Set selected bills for QR popup
       setSelectedBillsForQr(selectedBills);
-      
-      // Close selection popup and show QR popup
       setShowQrSelectionPopup(false);
       setShowQrPopup(true);
     } catch (error) {
       console.error('Error generating QR codes:', error);
-      // Handle error appropriately
     } finally {
       setIsGeneratingQr(false);
     }
@@ -102,7 +97,7 @@ const BillSearch = ({
                 onExport={onExport}
                 onSelectSubInv={onSelectSubInv}
                 selectedSubInv={selectedSubInv}
-                bills={bills}
+                inventories={inventories} // เปลี่ยนจาก bills เป็น inventories
                 disabled={isGeneratingQr}
               />
             </div>
@@ -131,7 +126,11 @@ const BillSearch = ({
                 onFilter={handleOpenDateFilterPopup}
                 onGenerateQr={handleOpenQrSelection}
                 onExport={onExport}
+                onSelectSubInv={onSelectSubInv}
+                selectedSubInv={selectedSubInv}
+                isFiltered={isFiltered}
                 disabled={isGeneratingQr}
+                inventories={inventories} // เปลี่ยนจาก bills เป็น inventories
               />
             </div>
           </div>

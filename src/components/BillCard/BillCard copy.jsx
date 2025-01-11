@@ -24,13 +24,15 @@ const BillCard = () => {
   const [isLoadingBills, setIsLoadingBills] = useState(true);
   const itemsPerPage = 8;
 
-  // Load data effects
+  // Load inventories when component mounts
   useEffect(() => {
     const loadInventories = async () => {
       try {
         setIsLoadingInventories(true);
         const invData = await inventoryService.getInventories();
         setInventories(invData);
+        
+        // Set GP-DAIK as default if available
         if (!selectedSubInv && invData.some(inv => inv.name === "GP-DAIK")) {
           setSelectedSubInv("GP-DAIK");
         }
@@ -43,6 +45,7 @@ const BillCard = () => {
     loadInventories();
   }, []);
 
+  // Load bills when subInventory changes
   useEffect(() => {
     const loadBills = async () => {
       try {
@@ -55,12 +58,13 @@ const BillCard = () => {
         setIsLoadingBills(false);
       }
     };
+
     loadBills();
   }, [selectedSubInv]);
 
   // Callbacks
   const handleSubInvChange = useCallback((subInv) => {
-    billCardService.clearCache(selectedSubInv);
+    billCardService.clearCache(selectedSubInv); // ล้าง cache เมื่อเปลี่ยน subInv
     setSelectedSubInv(subInv);
     setCurrentPage(1);
     setSelectedBills([]);
@@ -78,11 +82,12 @@ const BillCard = () => {
   }, []);
 
   const debouncedSearch = useMemo(
-    () => debounce((searchTerm) => {
-      setSearch(searchTerm);
-      setCurrentPage(1);
-      setSelectedBills([]);
-    }, 300),
+    () =>
+      debounce((searchTerm) => {
+        setSearch(searchTerm);
+        setCurrentPage(1);
+        setSelectedBills([]);
+      }, 300),
     []
   );
 
@@ -93,7 +98,7 @@ const BillCard = () => {
     [debouncedSearch]
   );
 
-  // Memoized data calculations
+  // Memoized data
   const totalQuantityByPart = useMemo(() => {
     const totals = new Map();
     if (!bills?.length) return totals;
@@ -101,6 +106,7 @@ const BillCard = () => {
     bills.forEach(bill => {
       const partNumber = bill.M_PART_NUMBER;
       if (!partNumber) return;
+      
       const currentTotal = totals.get(partNumber) || 0;
       totals.set(partNumber, currentTotal + Number(bill.M_QTY || 0));
     });
@@ -108,10 +114,12 @@ const BillCard = () => {
     return totals;
   }, [bills]);
 
+  // Filtered and grouped data
   const rawFilteredBills = useBillFilter(bills, search, dateFilter);
 
   const filteredBills = useMemo(() => {
     if (!rawFilteredBills) return [];
+    // ไม่ต้อง filter ด้วย subInventory อีกเพราะข้อมูลถูก filter มาแล้วจาก API
     return rawFilteredBills;
   }, [rawFilteredBills]);
 
@@ -199,47 +207,85 @@ const BillCard = () => {
   }
 
   return (
-    <div className="min-h-screen">
-      <div className="max-w-8xl mx-auto sm:px-6 lg:px-8 md:py-6 overflow-y-auto h-screen">
-        <div className="bg-white shadow-sm rounded-3xl">
-          <div className=" lg:p-6 text-gray-900">
-            {/* Search Section */}
-            <div className="sticky top-0 z-10">
-              <BillSearch
-                onSearch={handleSearch}
-                onExport={exportToExcel}
-                bills={bills}
-                inventories={inventories}
-                onFilterChange={handleFilterChange}
-                onSelectSubInv={handleSubInvChange}
-                selectedSubInv={selectedSubInv}
-                isFiltered={!!dateFilter}
-                defaultDates={dateFilter}
-                filteredBills={groupedBills}
-                selectedTableRows={selectedTableRows}
-              />
+    <div>
+      {/* Desktop View */}
+      <div className="hidden md:block">
+        <div className="overflow-y-auto h-screen">
+          <div className="py-12">
+            <div className="max-w-8xl mx-auto sm:px-6 lg:px-8">
+              <div className="bg-white overflow-hidden shadow-sm sm:rounded-3xl">
+                <div className="p-6 text-gray-900">
+                  <BillSearch
+                    onSearch={handleSearch}
+                    onExport={exportToExcel}
+                    bills={bills}
+                    inventories={inventories}
+                    onFilterChange={handleFilterChange}
+                    onSelectSubInv={handleSubInvChange}
+                    selectedSubInv={selectedSubInv}
+                    isFiltered={!!dateFilter}
+                    defaultDates={dateFilter}
+                    filteredBills={groupedBills}
+                    selectedTableRows={selectedTableRows}
+                  />
+                  <BillTable
+                    bills={currentBills}
+                    startingIndex={indexOfFirstBill}
+                    onSelectedRowsChange={handleSelectedRowsChange}
+                    key={`${currentPage}-${dateFilter?.startDate}-${dateFilter?.endDate}-${selectedSubInv}`}
+                    allBills={bills}
+                  />
+                  <Pagination
+                    totalPages={totalPages}
+                    currentPage={currentPage}
+                    totalItems={totalItems}
+                    onPageChange={handlePageChange}
+                    itemsPerPage={itemsPerPage}
+                  />
+                </div>
+              </div>
             </div>
+          </div>
+        </div>
+      </div>
 
-            {/* Table Section */}
-            <div className="sm:mt-6">
-              <BillTable
-                bills={currentBills}
-                startingIndex={indexOfFirstBill}
-                onSelectedRowsChange={handleSelectedRowsChange}
-                key={`${currentPage}-${dateFilter?.startDate}-${dateFilter?.endDate}-${selectedSubInv}-${search}`}
-                allBills={bills}
-              />
-            </div>
-
-            {/* Pagination Section */}
-            <div className="mt-6">
-              <Pagination
-                totalPages={totalPages}
-                currentPage={currentPage}
-                totalItems={totalItems}
-                onPageChange={handlePageChange}
-                itemsPerPage={itemsPerPage}
-              />
+      {/* Mobile View */}
+      <div className="block md:hidden">
+        <div className="h-screen flex flex-col overflow-hidden">
+          <div className="sticky top-0 bg-white z-10 shadow-sm">
+            <BillSearch
+              onSearch={handleSearch}
+              onExport={exportToExcel}
+              bills={bills}
+              inventories={inventories}
+              onFilterChange={handleFilterChange}
+              onSelectSubInv={handleSubInvChange}
+              selectedSubInv={selectedSubInv}
+              isFiltered={!!dateFilter}
+              defaultDates={dateFilter}
+              selectedTableRows={selectedTableRows}
+            />
+          </div>
+          <div className="flex-1 overflow-y-auto">
+            <div className="max-w-8xl mx-auto sm:px-6 lg:px-8">
+              <div className="bg-white overflow-hidden shadow-sm sm:rounded-lg">
+                <div className="text-gray-900">
+                  <BillTable
+                    bills={currentBills}
+                    startingIndex={indexOfFirstBill}
+                    onSelectedRowsChange={handleSelectedRowsChange}
+                    key={`${currentPage}-${search}-${dateFilter?.startDate}-${dateFilter?.endDate}-${selectedSubInv}`}
+                    allBills={bills}
+                  />
+                  <Pagination
+                    totalPages={totalPages}
+                    currentPage={currentPage}
+                    totalItems={totalItems}
+                    onPageChange={handlePageChange}
+                    itemsPerPage={itemsPerPage}
+                  />
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -248,4 +294,4 @@ const BillCard = () => {
   );
 };
 
-export default React.memo(BillCard);
+export default BillCard;

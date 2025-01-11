@@ -84,7 +84,7 @@ export const MobileView = ({
             {/* Header */}
             <div className="bg-gradient-to-r from-[#4052e5] to-[#4052e5]/90 p-4 rounded-t-lg flex justify-between items-center">
               <div className="flex items-center gap-3">
-                <span className="material-symbols-outlined text-white">
+                <span className="material-symbols-outlined text-blue-600 p-2 bg-white rounded-full">
                   format_list_bulleted
                 </span>
                 <span className="text-white">Inventory</span>
@@ -99,7 +99,11 @@ export const MobileView = ({
             <div className="divide-y divide-gray-100">
               {inventoryWithRunningTotal.length > 0 ? (
                 inventoryWithRunningTotal.map((item, index) => (
-                  <InventoryRecord key={index} item={item} />
+                  <InventoryRecord 
+                    key={item.id || index} 
+                    item={item} 
+                    index={index}
+                  />
                 ))
               ) : (
                 <div className="py-12 px-4 text-center">

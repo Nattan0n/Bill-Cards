@@ -10,7 +10,8 @@ export const ActionButtons = ({
   onExport,
   onSelectSubInv,
   selectedSubInv,
-  bills,
+  inventories = [], // เปลี่ยนจาก bills เป็น inventories
+  disabled = false
 }) => {
   return (
     <div className="flex items-center gap-3">
@@ -18,7 +19,7 @@ export const ActionButtons = ({
       <SubInventoryDropdown
         onSelectSubInv={onSelectSubInv}
         selectedSubInv={selectedSubInv}
-        bills={bills}
+        inventories={inventories} // ส่ง inventories แทน bills
       />
 
       {/* Date Filter Button */}
@@ -31,6 +32,7 @@ export const ActionButtons = ({
           isFiltered ? "bg-blue-100 text-blue-700" : "bg-white text-gray-700"
         } rounded-xl border border-blue-100 shadow-sm hover:bg-blue-50 transition-all duration-200`}
         tooltipText="Filter data by selecting a specific date range"
+        disabled={disabled}
       />
 
       {/* Generate QR Button */}
@@ -41,6 +43,7 @@ export const ActionButtons = ({
         iconColor="text-purple-600"
         className="flex items-center px-4 py-2.5 bg-white text-gray-700 rounded-xl border border-blue-100 shadow-sm hover:bg-blue-50 transition-all duration-200"
         tooltipText="Create QR codes for selected items"
+        disabled={disabled}
       />
 
       {/* Export Button */}
@@ -51,6 +54,7 @@ export const ActionButtons = ({
         iconColor="text-white"
         className="flex items-center px-4 py-2.5 bg-gradient-to-r from-indigo-600 via-blue-600 to-blue-700 text-white hover:from-blue-700 hover:via-blue-600 hover:to-indigo-700 rounded-xl border border-blue-100 shadow-sm hover:bg-blue-50 transition-all duration-200"
         tooltipText="Export your data"
+        disabled={disabled}
       />
     </div>
   );

@@ -1,13 +1,13 @@
 // components/BillCard/view/BillDetail/MobileView/InventoryRecord.jsx
-export const InventoryRecord = ({ item }) => (
+export const InventoryRecord = ({ item, index }) => (
   <div className="p-4 grid grid-cols-2 gap-x-6 gap-y-4 hover:bg-gray-50/50">
     <div>
-      <span className="text-xs text-gray-500">ID</span>
+      <span className="text-xs text-gray-500">ลำดับ</span>
       <div className="mt-1 flex items-center gap-2">
         <span className="material-symbols-outlined text-gray-400">
           tag
         </span>
-        <span className="text-sm text-gray-600">{item.id}</span>
+        <span className="text-sm text-gray-600">{index + 1}</span>
       </div>
     </div>
     
@@ -26,13 +26,13 @@ export const InventoryRecord = ({ item }) => (
     <div>
       <span className="text-xs text-gray-500">จำนวนรับ</span>
       <div className="mt-1">
-        {Number(item.quantity_sold) > 0 ? (
+        {Number(item.quantity_in) > 0 ? (
           <div className="flex items-center gap-2">
             <span className="material-symbols-outlined text-emerald-500">
               add_circle
             </span>
             <span className="text-sm text-emerald-600">
-              {item.quantity_sold}
+              {item.quantity_in}
             </span>
           </div>
         ) : (
@@ -44,13 +44,13 @@ export const InventoryRecord = ({ item }) => (
     <div>
       <span className="text-xs text-gray-500">จำนวนจ่าย</span>
       <div className="mt-1">
-        {Number(item.quantity_sold) < 0 ? (
+        {Number(item.quantity_out) > 0 ? (
           <div className="flex items-center gap-2">
             <span className="material-symbols-outlined text-red-500">
               remove_circle
             </span>
             <span className="text-sm text-red-600">
-              {Math.abs(item.quantity_sold)}
+              {item.quantity_out}
             </span>
           </div>
         ) : (
@@ -65,7 +65,7 @@ export const InventoryRecord = ({ item }) => (
         <span className="material-symbols-outlined text-violet-400">
           description
         </span>
-        <span className="text-sm text-gray-600">{item.plan_id}</span>
+        <span className="text-sm text-gray-600">{item.source_name || '-'}</span>
       </div>
     </div>
 

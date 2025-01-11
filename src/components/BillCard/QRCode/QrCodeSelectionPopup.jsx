@@ -15,11 +15,10 @@ const QrCodeSelectionPopup = ({
   const [isLoading, setIsLoading] = useState(false);
   const [progress, setProgress] = useState(0);
 
-  // Get unique values for dropdowns
+  // Get unique values for dropdown
   const uniquePartNumbers = [
     ...new Set(bills.map((bill) => bill.M_PART_NUMBER)),
   ];
-  const uniqueSubinvens = [...new Set(bills.map((bill) => bill.M_SUBINV))];
 
   const handleTypeChange = (type) => {
     setSelectedType(type);
@@ -63,10 +62,6 @@ const QrCodeSelectionPopup = ({
         dataToGenerate = bills.filter(
           (bill) => bill.M_PART_NUMBER === selectedValue
         );
-      }
-      // Filter by subinventory
-      else if (selectedType === "subinven") {
-        dataToGenerate = bills.filter((bill) => bill.M_SUBINV === selectedValue);
       }
 
       // Check if we have data to process
@@ -184,7 +179,7 @@ const QrCodeSelectionPopup = ({
               {/* Selection Type Buttons */}
               {(!selectedTableRows || selectedTableRows.length === 0) && (
                 <>
-                  {["partno", "subinven", "all"].map((type) => (
+                  {["partno", "all"].map((type) => (
                     <button
                       key={type}
                       onClick={() => handleTypeChange(type)}
@@ -200,8 +195,6 @@ const QrCodeSelectionPopup = ({
                       <span className="font-medium">
                         {type === "partno"
                           ? "Generate by Part NO."
-                          : type === "subinven"
-                          ? "Generate by Customer"
                           : "Generate All List"}
                       </span>
                       <span className="material-symbols-outlined">
@@ -212,12 +205,11 @@ const QrCodeSelectionPopup = ({
                     </button>
                   ))}
 
-                  {/* Dropdown for part number or customer selection */}
-                  {selectedType && selectedType !== "all" && (
+                  {/* Dropdown for part number selection */}
+                  {selectedType === "partno" && (
                     <div className="bg-gray-100 dark:bg-gray-700 rounded-lg p-4">
                       <label className="block text-sm font-medium text-gray-500 dark:text-gray-400 uppercase mb-2">
-                        Select{" "}
-                        {selectedType === "partno" ? "Part Number" : "Customer"}
+                        Select Part Number
                       </label>
                       <select
                         value={selectedValue}
@@ -228,10 +220,7 @@ const QrCodeSelectionPopup = ({
                         }`}
                       >
                         <option value="">Choose option...</option>
-                        {(selectedType === "partno"
-                          ? uniquePartNumbers
-                          : uniqueSubinvens
-                        ).map((value) => (
+                        {uniquePartNumbers.map((value) => (
                           <option key={value} value={value}>
                             {value}
                           </option>

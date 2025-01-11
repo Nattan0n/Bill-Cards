@@ -294,7 +294,7 @@ const ScanQrCodePopup = ({ isOpen, onClose, onSearch, bills }) => {
                 </div>
 
                 {/* Scan Button */}
-                <div className="absolute bottom-8 left-4 right-4 md:bottom-4">
+                <div className="fixed bottom-20 left-4 right-4 md:absolute md:bottom-4">
                   <button
                     onClick={handleScan}
                     disabled={isScanning}

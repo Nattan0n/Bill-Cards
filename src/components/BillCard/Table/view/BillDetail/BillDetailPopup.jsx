@@ -37,10 +37,9 @@ const BillDetailPopup = ({ bill, onClose }) => {
         date_time: item.M_DATE,
         quantity_sold: Number(item.M_QTY || 0),
         plan_id: item.M_SOURCE_ID,
-        signature: item.M_SOURCE_NAME || '-',
         transaction_type: item.TRANSACTION_TYPE_NAME,
         username: item.M_USER_NAME,
-        source_name: item.M_SOURCE_NAME,
+        source_name: item.M_SOURCE_NAME || '-',
         initial_total: initialTotal // เก็บยอดเริ่มต้นไว้
       }))
       .sort((a, b) => new Date(a.date_time) - new Date(b.date_time)); // เรียงจากเก่าไปใหม่

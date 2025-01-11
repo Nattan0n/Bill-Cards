@@ -1,32 +1,32 @@
-// 2. services/billCardService.js
+// services/billCardService.js
 import axios from '../utils/axios';
 
-let billCardsCache = null;
+const billCardsCache = new Map();
 let isFetching = false;
 
 export const billCardService = {
-    getBillCards: async () => {
-        if (billCardsCache) {
-            console.log("Returning data from cache:", billCardsCache);
-            return billCardsCache;
-        }
-
-        if (isFetching) {
-            console.log("Waiting for previous fetch to complete...");
-            while (isFetching) {
-                await new Promise(resolve => setTimeout(resolve, 100));
-            }
-            return billCardsCache;
+    getBillCards: async (subInventory = null) => {
+        const cacheKey = subInventory || 'all';
+        if (billCardsCache.has(cacheKey)) {
+            console.log(`Returning ${cacheKey} data from cache:`, billCardsCache.get(cacheKey));
+            return billCardsCache.get(cacheKey);
         }
 
         try {
             isFetching = true;
-            console.log("Fetching data from API...");
-            const response = await axios.get('/api/oracle/bill-cards');
+            console.log(`Fetching data for ${subInventory || 'all'}...`);
 
+            // เลือก endpoint ตาม subInventory
+            const url = subInventory 
+                ? `/api/oracle/bill-cards?data=${subInventory}`
+                : '/api/oracle/bill-cards'; // เปลี่ยนเป็น /data endpoint เสมอ
+
+            const response = await axios.get(url);
+            console.log('API Response:', response.data);
+
+            // ตรวจสอบและแปลงข้อมูล
             const billCardsData = response.data.bill_cards || [];
-            console.log("Raw bill cards data:", billCardsData);
-
+            
             const mappedData = billCardsData.map(item => ({
                 M_PART_NUMBER: item.m_part_number || '',
                 M_PART_DESCRIPTION: item.m_part_description || '',
@@ -41,12 +41,13 @@ export const billCardService = {
                 M_TYPE_ID: item.m_type_id || '',
                 TRANSACTION_TYPE_NAME: item.m_type_name || '',
                 M_USER_NAME: item.user_name || '',
-                // ใช้ part number เป็นชื่อไฟล์รูป
                 M_PART_IMG: item.m_part_number ? `/images/${item.m_part_number}.png` : ''
             }));
 
-            billCardsCache = mappedData;
-            console.log("Mapped and cached data:", mappedData);
+            // เก็บข้อมูลใน cache
+            billCardsCache.set(cacheKey, mappedData);
+            console.log(`Cached ${mappedData.length} records for ${cacheKey}`);
+            
             return mappedData;
         } catch (error) {
             console.error('Error fetching bill cards:', error);
@@ -56,8 +57,13 @@ export const billCardService = {
         }
     },
 
-    clearCache: () => {
-        billCardsCache = null;
-        console.log("Cache cleared.");
+    clearCache: (subInventory = null) => {
+        if (subInventory) {
+            billCardsCache.delete(subInventory);
+            console.log(`Cache cleared for ${subInventory}`);
+        } else {
+            billCardsCache.clear();
+            console.log("All cache cleared");
+        }
     }
 };

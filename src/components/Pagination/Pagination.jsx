@@ -165,13 +165,13 @@ const Pagination = ({
         {/* เพิ่ม margin-bottom */}
         {/* Results Info */}
         <div className="text-sm text-gray-700 dark:text-gray-400">
-          {totalItems > 0 ? (
+          {/* {totalItems > 0 ? (
             <span className="inline-flex items-center bg-blue-50 text-blue-700 px-3 py-1 rounded-full text-xs font-medium">
               {startIndex} - {endIndex} of {totalItems}
             </span>
           ) : (
             <span>No results</span>
-          )}
+          )} */}
         </div>
         {/* Compact Pagination Controls */}
         <div className="fixed bottom-4 left-0 right-0 flex justify-center bg-white/80 backdrop-blur-sm py-2">

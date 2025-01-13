@@ -13,7 +13,7 @@ const LoadingScreen = () => (
     <div className="flex items-center justify-center w-full h-screen">
       <div className="flex flex-col items-center gap-3">
         {/* <div className="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div> */}
-        <BlinkBlur color="#4F46E5" size="small" text="" textColor="" />
+        <BlinkBlur color="#dd1414" size="small" text="" textColor="" />
         <div className="text-xl text-gray-600">Loading data...</div>
       </div>
     </div>

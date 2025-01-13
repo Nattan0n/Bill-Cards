@@ -199,7 +199,7 @@ const BillCard = () => {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="flex flex-col items-center space-y-4">
-        <BlinkBlur color="#4F46E5" size="small" text="" textColor="" />
+        <BlinkBlur color="#dd1414" size="small" text="" textColor="" />
           <p className="text-gray-600">Loading data...</p>
         </div>
       </div>

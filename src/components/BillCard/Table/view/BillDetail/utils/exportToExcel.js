@@ -71,7 +71,7 @@ export const exportToExcel = async (
         index + 1, // ใช้ index + 1 แทน item.id
         item.date_time,
         item.quantity_sold,
-        item.plan_id,
+        item.source_name,
         item.quantity_remaining,
         item.username,
       ]);

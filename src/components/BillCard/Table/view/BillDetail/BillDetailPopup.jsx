@@ -36,7 +36,7 @@ const BillDetailPopup = ({ bill, onClose }) => {
         id: item.M_ID,
         date_time: item.M_DATE,
         quantity_sold: Number(item.M_QTY || 0),
-        plan_id: item.M_SOURCE_ID,
+        // plan_id: item.M_SOURCE_ID,
         transaction_type: item.TRANSACTION_TYPE_NAME,
         username: item.M_USER_NAME,
         source_name: item.M_SOURCE_NAME || '-',

@@ -9,6 +9,7 @@ import { useBillFilter } from "../../hook/useBillFilter";
 import { inventoryService } from "../../services/inventoryService";
 import { billCardService } from "../../services/billCardService";
 import debounce from "lodash/debounce";
+import { BlinkBlur } from "react-loading-indicators";
 
 const BillCard = () => {
   // States
@@ -17,7 +18,7 @@ const BillCard = () => {
   const [selectedBills, setSelectedBills] = useState([]);
   const [dateFilter, setDateFilter] = useState(null);
   const [selectedTableRows, setSelectedTableRows] = useState([]);
-  const [selectedSubInv, setSelectedSubInv] = useState('GP-DAIK');
+  const [selectedSubInv, setSelectedSubInv] = useState("GP-DAIK");
   const [inventories, setInventories] = useState([]);
   const [bills, setBills] = useState([]);
   const [isLoadingInventories, setIsLoadingInventories] = useState(true);
@@ -31,11 +32,11 @@ const BillCard = () => {
         setIsLoadingInventories(true);
         const invData = await inventoryService.getInventories();
         setInventories(invData);
-        if (!selectedSubInv && invData.some(inv => inv.name === "GP-DAIK")) {
+        if (!selectedSubInv && invData.some((inv) => inv.name === "GP-DAIK")) {
           setSelectedSubInv("GP-DAIK");
         }
       } catch (error) {
-        console.error('Failed to load inventories:', error);
+        console.error("Failed to load inventories:", error);
       } finally {
         setIsLoadingInventories(false);
       }
@@ -50,7 +51,7 @@ const BillCard = () => {
         const data = await billCardService.getBillCards(selectedSubInv);
         setBills(data);
       } catch (error) {
-        console.error('Failed to load bills:', error);
+        console.error("Failed to load bills:", error);
       } finally {
         setIsLoadingBills(false);
       }
@@ -59,12 +60,15 @@ const BillCard = () => {
   }, [selectedSubInv]);
 
   // Callbacks
-  const handleSubInvChange = useCallback((subInv) => {
-    billCardService.clearCache(selectedSubInv);
-    setSelectedSubInv(subInv);
-    setCurrentPage(1);
-    setSelectedBills([]);
-  }, [selectedSubInv]);
+  const handleSubInvChange = useCallback(
+    (subInv) => {
+      billCardService.clearCache(selectedSubInv);
+      setSelectedSubInv(subInv);
+      setCurrentPage(1);
+      setSelectedBills([]);
+    },
+    [selectedSubInv]
+  );
 
   const handleFilterChange = useCallback((dateRange) => {
     setDateFilter(dateRange);
@@ -78,11 +82,12 @@ const BillCard = () => {
   }, []);
 
   const debouncedSearch = useMemo(
-    () => debounce((searchTerm) => {
-      setSearch(searchTerm);
-      setCurrentPage(1);
-      setSelectedBills([]);
-    }, 300),
+    () =>
+      debounce((searchTerm) => {
+        setSearch(searchTerm);
+        setCurrentPage(1);
+        setSelectedBills([]);
+      }, 300),
     []
   );
 
@@ -97,14 +102,14 @@ const BillCard = () => {
   const totalQuantityByPart = useMemo(() => {
     const totals = new Map();
     if (!bills?.length) return totals;
-    
-    bills.forEach(bill => {
+
+    bills.forEach((bill) => {
       const partNumber = bill.M_PART_NUMBER;
       if (!partNumber) return;
       const currentTotal = totals.get(partNumber) || 0;
       totals.set(partNumber, currentTotal + Number(bill.M_QTY || 0));
     });
-    
+
     return totals;
   }, [bills]);
 
@@ -147,7 +152,9 @@ const BillCard = () => {
         billCount: relatedBills.length,
         relatedBills: sortedBills,
         latestDate: parseDate(sortedBills[0].M_DATE),
-        allRelatedBills: bills.filter(b => b.M_PART_NUMBER === bill.M_PART_NUMBER)
+        allRelatedBills: bills.filter(
+          (b) => b.M_PART_NUMBER === bill.M_PART_NUMBER
+        ),
       });
     });
 
@@ -162,7 +169,8 @@ const BillCard = () => {
   // Export handler
   const exportToExcel = useCallback(async () => {
     try {
-      const dataToExport = selectedBills.length > 0 ? selectedBills : groupedBills;
+      const dataToExport =
+        selectedBills.length > 0 ? selectedBills : groupedBills;
       await exportPartListToExcel(dataToExport);
     } catch (error) {
       console.error("Export failed:", error);
@@ -191,7 +199,7 @@ const BillCard = () => {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="flex flex-col items-center space-y-4">
-          <div className="w-12 h-12 border-4 border-blue-400 border-t-transparent rounded-full animate-spin"></div>
+        <BlinkBlur color="#4F46E5" size="small" text="" textColor="" />
           <p className="text-gray-600">Loading data...</p>
         </div>
       </div>

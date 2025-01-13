@@ -1,7 +1,7 @@
 // components/BillCard/Search/view/BillSearch.jsx
-import React, { useState, useRef } from 'react';
-import { SearchInput, ActionButtons, MobileDropdownMenu } from '../common';
-import { useClickOutside } from '../../../../hook/useClickOutside';
+import React, { useState, useRef } from "react";
+import { SearchInput, ActionButtons, MobileDropdownMenu } from "../common";
+import { useClickOutside } from "../../../../hook/useClickOutside";
 import ScanQrCodePopup from "../../QRCode/ScanQrCodePopup";
 import QrCodePopup from "../../QRCode/QrCodePopup";
 import QrCodeSelectionPopup from "../../QRCode/QrCodeSelectionPopup";
@@ -40,7 +40,7 @@ const BillSearch = ({
 
   const openModal = () => setIsModalOpen(true);
   const closeModal = () => setIsModalOpen(false);
-  
+
   const handleOpenDateFilterPopup = () => setIsDateFilterPopupOpen(true);
   const handleCloseDateFilterPopup = () => setIsDateFilterPopupOpen(false);
   const handleApplyDateFilter = (dateRange) => {
@@ -62,12 +62,12 @@ const BillSearch = ({
   const handleGenerateQr = async (selectedBills) => {
     try {
       setIsGeneratingQr(true);
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise((resolve) => setTimeout(resolve, 100));
       setSelectedBillsForQr(selectedBills);
       setShowQrSelectionPopup(false);
       setShowQrPopup(true);
     } catch (error) {
-      console.error('Error generating QR codes:', error);
+      console.error("Error generating QR codes:", error);
     } finally {
       setIsGeneratingQr(false);
     }
@@ -85,12 +85,12 @@ const BillSearch = ({
         <div className="rounded-2xl mb-6 overflow-visible sticky top-0 bg-gradient-to-l from-blue-200 to-indigo-200 backdrop-blur-sm bg-opacity-90 z-10 shadow-lg">
           <div className="p-4">
             <div className="flex justify-between items-center gap-4">
-              <SearchInput 
+              <SearchInput
                 value={searchTerm}
                 onChange={handleSearchChange}
                 onScan={openModal}
               />
-              <ActionButtons 
+              <ActionButtons
                 isFiltered={isFiltered}
                 onFilter={handleOpenDateFilterPopup}
                 onGenerateQr={handleOpenQrSelection}
@@ -111,14 +111,14 @@ const BillSearch = ({
           <div className="p-4">
             <div className="flex items-center gap-3">
               <div className="flex-1">
-                <SearchInput 
+                <SearchInput
                   value={searchTerm}
                   onChange={handleSearchChange}
                   onScan={openModal}
                   isMobile
                 />
               </div>
-              <MobileDropdownMenu 
+              <MobileDropdownMenu
                 ref={dropdownRef}
                 isOpen={isDropdownOpen}
                 onToggle={() => setIsDropdownOpen(!isDropdownOpen)}
@@ -158,10 +158,7 @@ const BillSearch = ({
       )}
 
       {showQrPopup && (
-        <QrCodePopup 
-          bills={selectedBillsForQr} 
-          onClose={handleCloseQrPopup} 
-        />
+        <QrCodePopup bills={selectedBillsForQr} onClose={handleCloseQrPopup} />
       )}
 
       {isDateFilterPopupOpen && (

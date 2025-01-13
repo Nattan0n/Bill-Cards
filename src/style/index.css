@@ -2,18 +2,54 @@
 @tailwind components;
 @tailwind utilities;
 
-/* ซ่อน Scroll Bar บนทั้งแนวตั้งและแนวนอน */
+@layer base {
+  html {
+    font-family: 'Public Sans', 'Noto Sans Thai', system-ui, sans-serif;
+  }
+  
+  body {
+    @apply bg-gray-100;
+    font-family: 'Public Sans', 'Noto Sans Thai', system-ui, sans-serif;
+  }
+
+  /* ตัวอักษรภาษาอังกฤษ */
+  .en {
+    font-family: 'Public Sans', system-ui, sans-serif !important;
+  }
+
+  /* ตัวอักษรภาษาไทย */
+  .th {
+    font-family: 'Noto Sans Thai', system-ui, sans-serif !important;
+  }
+
+  /* สำหรับหัวข้อ */
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-medium;
+  }
+}
+
+/* Custom Styles */
+.heading-large {
+  @apply text-2xl font-semibold tracking-tight;
+  line-height: 1.3;
+}
+
+.heading-medium {
+  @apply text-xl font-medium;
+  line-height: 1.4;
+}
+
+.body-text {
+  @apply text-base font-normal;
+  line-height: 1.6;
+}
+
+.caption-text {
+  @apply text-sm text-gray-600;
+  line-height: 1.5;
+}
+
+/* Hide Scrollbar */
 body {
-    overflow: hidden;
-  }
-  
-  /* หรือถ้าต้องการซ่อนเฉพาะ Scroll bar แนวตั้ง */
-  body {
-    overflow-y: hidden;
-  }
-  
-  /* หรือถ้าต้องการซ่อนเฉพาะ Scroll bar แนวนอน */
-  body {
-    overflow-x: hidden;
-  }
-  
+  overflow: hidden;
+}

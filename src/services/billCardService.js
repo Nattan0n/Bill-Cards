@@ -8,7 +8,7 @@ export const billCardService = {
     getBillCards: async (subInventory = null) => {
         const cacheKey = subInventory || 'all';
         if (billCardsCache.has(cacheKey)) {
-            console.log(`Returning ${cacheKey} data from cache:`, billCardsCache.get(cacheKey));
+            // console.log(`Returning ${cacheKey} data from cache:`, billCardsCache.get(cacheKey));
             return billCardsCache.get(cacheKey);
         }
 

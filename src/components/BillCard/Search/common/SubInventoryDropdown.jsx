@@ -89,18 +89,20 @@ export const SubInventoryDropdown = ({
         tooltipText={getSelectedInventoryDetails?.description || "Filter by SubInventory"}
       />
 
-      {isOpen && (
-        <div className="absolute z-50 mt-2 w-64 bg-white rounded-xl shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none 
-          transform transition-all duration-200 ease-in-out animate__animated animate__faster
-          ${isClosing ? 'animate__zoomOut' : 'animate__bounceIn'}">
-          {/* Search Section */}
-          <div className="p-2 border-b border-gray-100">
-            <div className="flex items-center justify-between px-2 mb-2">
+{isOpen && (
+        <div className={`absolute z-50 mt-2 w-80 bg-white rounded-xl shadow-lg border border-gray-200 transform transition-all duration-200 ease-in-out animate__animated animate__faster ${
+          isClosing ? "animate__zoomOut" : "animate__bounceIn"
+        }`}>
+          {/* Header */}
+          <div className="p-3 border-b border-gray-100">
+            <div className="flex items-center justify-between mb-2">
               <div className="text-xs font-medium text-gray-500">SubInventory</div>
               <div className="text-xs text-gray-400">
                 {filteredInventories.length} of {inventories.length}
               </div>
             </div>
+            
+            {/* Search Input */}
             <div className="relative">
               <input
                 ref={searchInputRef}
@@ -108,7 +110,8 @@ export const SubInventoryDropdown = ({
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 placeholder="Search SubInventory..."
-                className="w-full px-3 py-2 text-sm bg-gray-50 border border-gray-100 rounded-lg focus:outline-none focus:ring-1 focus:ring-orange-400 focus:border-orange-400"
+                className="w-full px-3 py-2 text-sm bg-gray-50 border border-gray-100 rounded-lg 
+                  focus:outline-none focus:ring-1 focus:ring-orange-400 focus:border-orange-400"
               />
               {searchTerm && (
                 <button
@@ -121,43 +124,32 @@ export const SubInventoryDropdown = ({
             </div>
           </div>
 
-          {/* SubInventory List */}
-          <div className="py-1 max-h-60 overflow-y-auto">
-            {/* <button
-              onClick={() => handleSelectOption(null)}
-              className={`w-full text-left px-4 py-2.5 text-sm transition-colors ${
-                !selectedSubInv
-                  ? "bg-orange-50 text-orange-700"
-                  : "text-gray-700 hover:bg-orange-50 hover:text-orange-700"
-              }`}
-            >
-              All SubInventories
-            </button> */}
-
+          {/* List */}
+          <div className="overflow-y-auto" style={{ maxHeight: "320px" }}>
             {filteredInventories.length > 0 ? (
               filteredInventories.map((inv) => (
                 <button
                   key={inv.name}
                   onClick={() => handleSelectOption(inv.name)}
-                  className={`w-full text-left px-4 py-2.5 text-sm transition-colors
-                    ${selectedSubInv === inv.name
-                      ? "bg-orange-50 text-orange-700"
-                      : "text-gray-700 hover:bg-orange-50 hover:text-orange-700"
-                    } flex flex-col`}
+                  className={`w-full text-left px-3 py-2 transition-colors
+                    ${selectedSubInv === inv.name 
+                      ? "bg-orange-50" 
+                      : "hover:bg-orange-50/50"
+                    }`}
                 >
-                  <span className="flex items-center justify-between">
-                    <span>{inv.name}</span>
-                    {inv.name === "GP-DAIK" && (
-                      <span className="text-xs bg-orange-100 text-orange-600 px-2 py-0.5 rounded-full">
-                        Default
+                  <div className="flex flex-col">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-gray-700">{inv.name}</span>
+                      {inv.name === "GP-DAIK" && (
+                        <span className="text-xs bg-orange-100 text-orange-600 px-2 py-0.5 rounded-full">Default</span>
+                      )}
+                    </div>
+                    {inv.description && (
+                      <span className="text-xs text-gray-500 mt-0.5">
+                        {inv.description}
                       </span>
                     )}
-                  </span>
-                  {inv.description && (
-                    <span className="text-xs text-gray-500 mt-1">
-                      {inv.description}
-                    </span>
-                  )}
+                  </div>
                 </button>
               ))
             ) : (

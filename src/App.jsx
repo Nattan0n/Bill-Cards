@@ -5,14 +5,16 @@ import BillCard from "./components/BillCard/BillCard";
 import { useBillDataAPI } from "./hook/useBillDataAPI";
 import { useAuth } from './hook/useAuth';
 import "./style/App.css"
+import { BlinkBlur } from "react-loading-indicators";
 
 // แก้ไขส่วน loading ใน App.jsx
 const LoadingScreen = () => (
   <div className="fixed inset-0 bg-white z-50">
     <div className="flex items-center justify-center w-full h-screen">
       <div className="flex flex-col items-center gap-3">
-        <div className="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
-        <div className="text-xl text-gray-600">กำลังโหลดข้อมูล...</div>
+        {/* <div className="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div> */}
+        <BlinkBlur color="#4F46E5" size="small" text="" textColor="" />
+        <div className="text-xl text-gray-600">Loading data...</div>
       </div>
     </div>
   </div>

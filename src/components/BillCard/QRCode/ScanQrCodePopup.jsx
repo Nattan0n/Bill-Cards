@@ -1,3 +1,4 @@
+// components/BillCard/QRCode/ScanQrCodePopup.jsx
 import React, { useState, useRef, useEffect, useMemo } from "react";
 import Webcam from "react-webcam";
 import jsQR from "jsqr";
@@ -14,14 +15,21 @@ import {
 import { useBillFilter } from "../../../hook/useBillFilter";
 
 const ScanQrCodePopup = ({ isOpen, onClose, onSearch, bills }) => {
-  // States
+  // Camera states
+  const [hasPermission, setHasPermission] = useState(false);
+  const [permissionError, setPermissionError] = useState(null);
+  const [isCameraReady, setIsCameraReady] = useState(false);
+  const [facingMode, setFacingMode] = useState("environment");
+  
+  // UI states
   const [showDetailPopup, setShowDetailPopup] = useState(false);
   const [selectedBill, setSelectedBill] = useState(null);
   const [isScanning, setIsScanning] = useState(false);
   const [scanningMessage, setScanningMessage] = useState("");
   const [isClosing, setIsClosing] = useState(false);
   const [showScanner, setShowScanner] = useState(true);
-  const [facingMode, setFacingMode] = useState("environment");
+  
+  // Refs
   const webcamRef = useRef(null);
 
   // Get latest month/year and filtered bills
@@ -44,46 +52,108 @@ const ScanQrCodePopup = ({ isOpen, onClose, onSearch, bills }) => {
     return groupBillsByPartNumber(dateFilteredBills, latestDateRange);
   }, [bills, latestDateRange]);
 
+  // Request camera permission when component mounts
+  useEffect(() => {
+    const requestCameraPermission = async () => {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ 
+          video: { 
+            facingMode,
+            width: { ideal: 1280 },
+            height: { ideal: 720 }
+          }
+        });
+        setHasPermission(true);
+        setPermissionError(null);
+        
+        // Stop the stream to let Webcam component take over
+        stream.getTracks().forEach(track => track.stop());
+
+      } catch (err) {
+        console.error('Camera permission error:', err);
+        setPermissionError(err.message);
+        setHasPermission(false);
+        
+        let errorMessage = "ไม่สามารถเข้าถึงกล้องได้";
+        if (err.name === "NotAllowedError") {
+          errorMessage = "กรุณาอนุญาตการใช้งานกล้องในการตั้งค่าเบราว์เซอร์";
+        } else if (err.name === "NotFoundError") {
+          errorMessage = "ไม่พบกล้องในอุปกรณ์ของคุณ";
+        }
+        
+        Swal.fire({
+          title: "ไม่สามารถใช้งานกล้องได้",
+          text: errorMessage,
+          icon: "error",
+          confirmButtonText: "ตกลง",
+          confirmButtonColor: "#3085d6"
+        });
+      }
+    };
+
+    if (isOpen) {
+      requestCameraPermission();
+    }
+
+    return () => {
+      // Cleanup
+      if (webcamRef.current && webcamRef.current.stream) {
+        webcamRef.current.stream.getTracks().forEach(track => track.stop());
+      }
+    };
+  }, [isOpen, facingMode]);
+
   // Reset states when component mounts/unmounts
   useEffect(() => {
     if (!isOpen) {
       setShowDetailPopup(false);
       setSelectedBill(null);
       setShowScanner(true);
+      setIsCameraReady(false);
     }
   }, [isOpen]);
 
+  // Handle camera ready state
+  const handleUserMedia = () => {
+    setIsCameraReady(true);
+    setScanningMessage("พร้อมสแกน QR Code");
+  };
+
+  // Find matching bill from QR data
   const findMatchingBill = (qrData) => {
     if (!qrData?.partNumber) return null;
 
     const qrPartNumber = String(qrData.partNumber).trim().toLowerCase();
     
-    // Search in grouped bills
     return groupedBills.find(group => {
       const billPartNumber = String(group?.M_PART_NUMBER || "").trim().toLowerCase();
       return billPartNumber === qrPartNumber;
     });
   };
 
+  // Handle QR code scanning
   const handleScan = async () => {
-    if (!webcamRef.current) return;
+    if (!webcamRef.current || !hasPermission || !isCameraReady) return;
     
     try {
       setIsScanning(true);
       setScanningMessage("กำลังสแกน QR Code...");
 
+      // Get screenshot from webcam
       const imageSrc = webcamRef.current.getScreenshot();
       if (!imageSrc) throw new Error("ไม่สามารถถ่ายภาพได้");
 
+      // Create image from screenshot
       const img = new Image();
       img.src = imageSrc;
 
       await new Promise((resolve, reject) => {
         img.onload = resolve;
         img.onerror = reject;
-        setTimeout(reject, 3000);
+        setTimeout(() => reject(new Error("หมดเวลาในการโหลดภาพ")), 3000);
       });
 
+      // Process image
       const canvas = document.createElement("canvas");
       const context = canvas.getContext("2d");
       canvas.width = img.width;
@@ -118,7 +188,7 @@ const ScanQrCodePopup = ({ isOpen, onClose, onSearch, bills }) => {
         
         setSelectedBill({
           ...foundBill,
-          dateRange: latestDateRange // Pass the date range
+          dateRange: latestDateRange
         });
         setShowDetailPopup(true);
         setScanningMessage("พบข้อมูล Bill แล้ว");
@@ -143,6 +213,12 @@ const ScanQrCodePopup = ({ isOpen, onClose, onSearch, bills }) => {
     }
   };
 
+  // Handle flip camera (for devices with multiple cameras)
+  const handleFlipCamera = () => {
+    setFacingMode(current => current === "user" ? "environment" : "user");
+  };
+
+  // Handle close popup
   const handleClose = () => {
     setIsClosing(true);
     setTimeout(() => {
@@ -154,6 +230,7 @@ const ScanQrCodePopup = ({ isOpen, onClose, onSearch, bills }) => {
     }, 500);
   };
 
+  // Handle close detail popup
   const handleCloseDetail = () => {
     console.log("Closing detail popup");
     setShowDetailPopup(false);
@@ -161,7 +238,6 @@ const ScanQrCodePopup = ({ isOpen, onClose, onSearch, bills }) => {
     onClose();
   };
 
-  // Don't return null if showing detail popup
   if (!isOpen && !showDetailPopup) return null;
 
   return (
@@ -200,13 +276,12 @@ const ScanQrCodePopup = ({ isOpen, onClose, onSearch, bills }) => {
           onClick={handleClose}
         />
 
-        {/* Responsive Container */}
+        {/* Main Container */}
         <div className="flex items-center justify-center min-h-screen p-4">
-          <div
-            className={`relative w-full max-w-[800px] h-[calc(100vh-2rem)] md:h-auto bg-white/85 rounded-3xl shadow-2xl overflow-hidden animate__animated animate__faster ${
-              isClosing ? "animate__zoomOut" : "animate__zoomIn"
-            }`}
-          >
+          <div className={`relative w-full max-w-[800px] h-[calc(100vh-2rem)] md:h-auto bg-white/85 rounded-3xl shadow-2xl overflow-hidden animate__animated animate__faster ${
+            isClosing ? "animate__zoomOut" : "animate__zoomIn"
+          }`}>
+            
             {/* Header */}
             <div className="bg-gradient-to-r from-indigo-600 via-blue-600 to-blue-800 px-4 py-4 shadow-lg">
               <div className="flex items-center justify-between">
@@ -223,31 +298,51 @@ const ScanQrCodePopup = ({ isOpen, onClose, onSearch, bills }) => {
                     </p>
                   </div>
                 </div>
-                <button
-                  onClick={handleClose}
-                  className="flex items-center px-2 py-2 rounded-lg bg-white/10 hover:bg-red-500 text-white transition-all duration-200 backdrop-blur-sm group"
-                >
-                  <span className="material-symbols-outlined group-hover:rotate-90 transition-transform duration-200">
-                    close
-                  </span>
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={handleFlipCamera}
+                    className="flex items-center px-2 py-2 rounded-lg bg-white/10 hover:bg-white/20 text-white transition-all duration-200 backdrop-blur-sm"
+                  >
+                    <span className="material-symbols-outlined">flip_camera_ios</span>
+                  </button>
+                  <button
+                    onClick={handleClose}
+                    className="flex items-center px-2 py-2 rounded-lg bg-white/10 hover:bg-red-500 text-white transition-all duration-200 backdrop-blur-sm group"
+                  >
+                    <span className="material-symbols-outlined group-hover:rotate-90 transition-transform duration-200">
+                      close
+                    </span>
+                  </button>
+                </div>
               </div>
             </div>
 
             {/* Camera View */}
             <div className="relative h-[calc(100%-64px)] md:h-auto md:aspect-video p-0 md:p-6">
               <div className="relative h-full md:rounded-2xl md:shadow-lg overflow-hidden">
-                <Webcam
-                  audio={false}
-                  ref={webcamRef}
-                  screenshotFormat="image/jpeg"
-                  className="w-full h-full object-cover"
-                  videoConstraints={{
-                    facingMode: facingMode,
-                    width: { min: 1280 },
-                    height: { min: 720 },
-                  }}
-                />
+                {hasPermission ? (
+                  <Webcam
+                    audio={false}
+                    ref={webcamRef}
+                    screenshotFormat="image/jpeg"
+                    className="w-full h-full object-cover"
+                    videoConstraints={{
+                      facingMode,
+                      width: { ideal: 1280 },
+                      height: { ideal: 720 }
+                    }}
+                    onUserMedia={handleUserMedia}
+                  />
+                ) : (
+                  <div className="flex items-center justify-center h-full bg-gray-100">
+                    <div className="text-center p-4">
+                      <span className="material-symbols-outlined text-4xl text-gray-400 mb-2">
+                        no_photography
+                      </span>
+                      <p className="text-gray-600">{permissionError || 'กำลังขอสิทธิ์การใช้งานกล้อง...'}</p>
+                    </div>
+                  </div>
+                )}
 
                 {/* Scanning Overlay */}
                 {isScanning && (
@@ -297,7 +392,7 @@ const ScanQrCodePopup = ({ isOpen, onClose, onSearch, bills }) => {
                 <div className="fixed bottom-20 left-4 right-4 md:absolute md:bottom-4">
                   <button
                     onClick={handleScan}
-                    disabled={isScanning}
+                    disabled={isScanning || !hasPermission || !isCameraReady}
                     className="w-full bg-gradient-to-r from-indigo-600 via-blue-600 to-blue-800 hover:from-blue-800 hover:via-blue-700 hover:to-blue-900 disabled:opacity-50 text-white py-3 rounded-xl flex items-center justify-center gap-2 transition-all duration-300 shadow-lg"
                   >
                     {isScanning ? (
@@ -305,7 +400,10 @@ const ScanQrCodePopup = ({ isOpen, onClose, onSearch, bills }) => {
                     ) : (
                       <Camera className="w-5 h-5" />
                     )}
-                    {isScanning ? "กำลังสแกน..." : "สแกน QR Code"}
+                    {isScanning ? "กำลังสแกน..." : 
+                     !hasPermission ? "รอการอนุญาตใช้กล้อง..." :
+                     !isCameraReady ? "กำลังเตรียมกล้อง..." :
+                     "สแกน QR Code"}
                   </button>
                 </div>
               </div>
@@ -314,7 +412,7 @@ const ScanQrCodePopup = ({ isOpen, onClose, onSearch, bills }) => {
         </div>
       </div>
 
-      {/* Detail Popup */}
+      {/* Bill Detail Popup */}
       {showDetailPopup && selectedBill && (
         <BillDetailPopup
           bill={selectedBill}

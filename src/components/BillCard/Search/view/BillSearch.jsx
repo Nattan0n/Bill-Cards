@@ -163,11 +163,11 @@ const BillSearch = ({
 
       {isDateFilterPopupOpen && (
         <DateFilterPopup
-          isOpen={isDateFilterPopupOpen}
-          onClose={handleCloseDateFilterPopup}
-          onApply={handleApplyDateFilter}
-          defaultDates={defaultDates}
-        />
+        isOpen={isDateFilterPopupOpen}
+        onClose={handleCloseDateFilterPopup}
+        onApply={handleApplyDateFilter}
+        defaultDates={defaultDates}
+    />    
       )}
     </div>
   );

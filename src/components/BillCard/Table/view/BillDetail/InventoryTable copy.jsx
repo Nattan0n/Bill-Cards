@@ -1,7 +1,7 @@
 // components/BillCard/view/BillDetail/InventoryTable.jsx
 import React from "react";
 
-export const InventoryTable = ({ inventory }) => (
+export const InventoryTable = ({ inventory , startingIndex = 0 }) => (
   <div className="bg-white rounded-2xl shadow-sm">
     {/* Header */}
     <div className="bg-gradient-to-r from-[#4052e5] to-[#4052e5]/90 p-4 rounded-t-2xl flex justify-between items-center">
@@ -9,7 +9,9 @@ export const InventoryTable = ({ inventory }) => (
         <span className="material-symbols-outlined mr-2 text-blue-600 p-2 bg-white rounded-full">
           format_list_bulleted
         </span>
-        <span className="font-semibold text-white flex items-center">Inventory</span>
+        <span className="font-semibold text-white flex items-center">
+          Inventory
+        </span>
       </div>
       <div className="bg-white/30 px-3 py-1 rounded-lg">
         <span className="text-white text-sm">Records : {inventory.length}</span>
@@ -17,12 +19,12 @@ export const InventoryTable = ({ inventory }) => (
     </div>
 
     {/* Table */}
-    <div className="overflow-x-auto">
+    <div className="overflow-x-auto max-h-[500px] overflow-y-auto">
       <table className="w-full">
-        <thead>
+        <thead className="bg-white sticky top-0 z-10">
           <tr className="border-b">
             <th className="p-3 text-left">
-              <span className="text-sm text-gray-600">ID</span>
+              <span className="text-sm text-gray-600">No.</span>
             </th>
             <th className="p-3 text-left">
               <span className="text-sm text-gray-600">วันที่</span>
@@ -50,10 +52,7 @@ export const InventoryTable = ({ inventory }) => (
               <tr key={index} className="hover:bg-gray-50/50">
                 <td className="p-3">
                   <div className="flex items-center gap-2">
-                    <span className="material-symbols-outlined text-gray-400">
-                      tag
-                    </span>
-                    <span className="text-sm text-gray-600">{item.id}</span>
+                    <span className="text-sm text-gray-600">{startingIndex + index + 1}</span>
                   </div>
                 </td>
                 <td className="p-3">
@@ -90,7 +89,7 @@ export const InventoryTable = ({ inventory }) => (
                       description
                     </span>
                     <span className="text-sm text-gray-600">
-                      {item.plan_id}
+                      {item.source_name || "-"}
                     </span>
                   </div>
                 </td>
@@ -110,7 +109,7 @@ export const InventoryTable = ({ inventory }) => (
                       person
                     </span>
                     <span className="text-sm text-gray-600">
-                      {item.signature}
+                      {item.username}
                     </span>
                   </div>
                 </td>

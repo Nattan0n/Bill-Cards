@@ -18,7 +18,7 @@ export const InventoryRecord = ({ item, index }) => (
           calendar_today
         </span>
         <span className="text-sm text-gray-600">
-          {new Date(item.date_time).toLocaleDateString('th-TH')}
+          {new Date(item.date_time).toISOString().slice(0, 19).replace('T', ' ')}
         </span>
       </div>
     </div>
@@ -26,13 +26,13 @@ export const InventoryRecord = ({ item, index }) => (
     <div>
       <span className="text-xs text-gray-500">จำนวนรับ</span>
       <div className="mt-1">
-        {Number(item.quantity_in) > 0 ? (
+        {Number(item.quantity_sold) > 0 ? (
           <div className="flex items-center gap-2">
             <span className="material-symbols-outlined text-emerald-500">
               add_circle
             </span>
             <span className="text-sm text-emerald-600">
-              {item.quantity_in}
+              {item.quantity_sold}
             </span>
           </div>
         ) : (
@@ -44,13 +44,13 @@ export const InventoryRecord = ({ item, index }) => (
     <div>
       <span className="text-xs text-gray-500">จำนวนจ่าย</span>
       <div className="mt-1">
-        {Number(item.quantity_out) > 0 ? (
+        {Number(item.quantity_sold) < 0 ? (
           <div className="flex items-center gap-2">
             <span className="material-symbols-outlined text-red-500">
               remove_circle
             </span>
             <span className="text-sm text-red-600">
-              {item.quantity_out}
+              {Math.abs(item.quantity_sold)}
             </span>
           </div>
         ) : (
@@ -88,5 +88,18 @@ export const InventoryRecord = ({ item, index }) => (
         <span className="text-sm text-gray-600">{item.username}</span>
       </div>
     </div>
+
+    {/* Debug Information */}
+    {/* {process.env.NODE_ENV !== 'production' && item.debug_info && (
+      <div className="col-span-2 mt-2 p-2 bg-gray-50 rounded-lg text-xs font-mono">
+        <div className="flex justify-between text-blue-600">
+          <span>
+            {item.debug_info.previous} {item.debug_info.change >= 0 ? '+' : ''} 
+            ({item.debug_info.change})
+          </span>
+          <span>= {item.debug_info.final}</span>
+        </div>
+      </div>
+    )} */}
   </div>
 );

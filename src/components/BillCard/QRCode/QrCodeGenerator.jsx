@@ -1,7 +1,7 @@
 // QrCodeGenerator.jsx
 import React, { useState, useEffect } from "react";
 import QRCode from "qrcode";
-import Logo from "../../../assets/images/IPlan_Logo.png"
+import Logo from "../../../assets/images/thairung-logo.png"
 
 export const getQRCodeDataUrl = async (bill) => {
   try {
@@ -50,7 +50,7 @@ export const getQRCodeDataUrl = async (bill) => {
       await new Promise((resolve, reject) => {
         logo.onload = resolve;
         logo.onerror = reject;
-        logo.src = "/img/thairung-logo.png";
+        logo.src = Logo;
       });
 
       // คำนวณขนาดของ logo แบบสี่เหลี่ยมผืนผ้า

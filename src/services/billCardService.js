@@ -5,24 +5,34 @@ const billCardsCache = new Map();
 let isFetching = false;
 
 export const billCardService = {
-    getBillCards: async (subInventory = null) => {
-        const cacheKey = subInventory || 'all';
+    getBillCards: async (subInventory = null, year = null) => {
+        // ถ้าไม่ระบุปี ใช้ปีปัจจุบัน
+        const queryYear = year || new Date().getFullYear();
+        
+        // สร้าง cache key ที่รวมทั้ง subInventory และ year
+        const cacheKey = `${subInventory || 'all'}-${queryYear}`;
+        
         if (billCardsCache.has(cacheKey)) {
-            // console.log(`Returning ${cacheKey} data from cache:`, billCardsCache.get(cacheKey));
+            console.log(`Returning ${cacheKey} data from cache:`, billCardsCache.get(cacheKey));
             return billCardsCache.get(cacheKey);
         }
 
         try {
             isFetching = true;
-            // console.log(`Fetching data for ${subInventory || 'all'}...`);
+            console.log(`Fetching data for ${subInventory || 'all'} in year ${queryYear}...`);
 
-            // เลือก endpoint ตาม subInventory
-            const url = subInventory 
-                ? `/api/oracle/bill-cards?data=${subInventory}`
-                : '/api/oracle/bill-cards'; // เปลี่ยนเป็น /data endpoint เสมอ
-
+            // สร้าง URL พร้อม query parameters
+            const baseUrl = '/api/oracle/bill-cards';
+            const params = new URLSearchParams();
+            
+            if (subInventory) {
+                params.append('data', subInventory);
+            }
+            params.append('year', queryYear);
+            
+            const url = `${baseUrl}?${params.toString()}`;
             const response = await axios.get(url);
-            // console.log('API Response:', response.data);
+            console.log('API Response:', response.data);
 
             // ตรวจสอบและแปลงข้อมูล
             const billCardsData = response.data.bill_cards || [];
@@ -46,7 +56,7 @@ export const billCardService = {
 
             // เก็บข้อมูลใน cache
             billCardsCache.set(cacheKey, mappedData);
-            // console.log(`Cached ${mappedData.length} records for ${cacheKey}`);
+            console.log(`Cached ${mappedData.length} records for ${cacheKey}`);
             
             return mappedData;
         } catch (error) {
@@ -57,11 +67,23 @@ export const billCardService = {
         }
     },
 
-    clearCache: (subInventory = null) => {
-        if (subInventory) {
-            billCardsCache.delete(subInventory);
-            console.log(`Cache cleared for ${subInventory}`);
+    // ปรับปรุง clearCache ให้รองรับการล้าง cache ตามปี
+    clearCache: (subInventory = null, year = null) => {
+        if (subInventory && year) {
+            // ล้าง cache เฉพาะ subInventory และปีที่ระบุ
+            const cacheKey = `${subInventory}-${year}`;
+            billCardsCache.delete(cacheKey);
+            console.log(`Cache cleared for ${subInventory} in year ${year}`);
+        } else if (subInventory) {
+            // ล้าง cache ทั้งหมดของ subInventory นั้น
+            for (const key of billCardsCache.keys()) {
+                if (key.startsWith(`${subInventory}-`)) {
+                    billCardsCache.delete(key);
+                }
+            }
+            console.log(`Cache cleared for all years of ${subInventory}`);
         } else {
+            // ล้าง cache ทั้งหมด
             billCardsCache.clear();
             console.log("All cache cleared");
         }

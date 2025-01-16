@@ -182,7 +182,7 @@ const Navigation = ({ user, roles, onLogout }) => {
             <div className="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex">
               <NavLink
                 className="inline-flex items-center px-1 pt-1 border-b-2 border-indigo-400 text-sm font-medium leading-5 text-gray-900 focus:outline-none focus:border-indigo-700 transition duration-150 ease-in-out"
-                to="/iplan/billcard"
+                to="http://129.200.6.52/iplan/billcard"
               >
                 Bill Card
               </NavLink>

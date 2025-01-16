@@ -16,45 +16,62 @@ const BillDetailPopup = ({ bill, onClose }) => {
   });
   const [isClosing, setIsClosing] = useState(false);
 
-  // แปลงข้อมูลและเรียงลำดับตามวันที่
+  // Helper function to compare dates with time
+  const compareDatesWithTime = (dateA, dateB) => {
+    const [dateStrA, timeStrA = '00:00:00'] = dateA.split(' ');
+    const [dateStrB, timeStrB = '00:00:00'] = dateB.split(' ');
+
+    // เปรียบเทียบวันที่
+    if (dateStrA !== dateStrB) {
+      return new Date(dateStrA) - new Date(dateStrB);
+    }
+
+    // ถ้าวันที่เท่ากัน เปรียบเทียบเวลา
+    const timeA = timeStrA.split(':').map(Number);
+    const timeB = timeStrB.split(':').map(Number);
+
+    // เปรียบเทียบชั่วโมง
+    if (timeA[0] !== timeB[0]) {
+      return timeA[0] - timeB[0];
+    }
+
+    // เปรียบเทียบนาที
+    if (timeA[1] !== timeB[1]) {
+      return timeA[1] - timeB[1];
+    }
+
+    // เปรียบเทียบวินาที
+    return timeA[2] - timeB[2];
+  };
+
+  // แปลงข้อมูลและเรียงลำดับตามวันที่และเวลา
   const inventoryData = useMemo(() => {
-    if (!bill.relatedBills) return [];
+    if (!bill?.allRelatedBills?.length) return [];
 
-    // หายอดเริ่มต้นจากข้อมูลทั้งหมด
-    const allRecords = bill.allRelatedBills || bill.relatedBills;
-    const initialTotal = allRecords.reduce((sum, item) => {
-      const date = new Date(item.M_DATE);
-      // นับเฉพาะรายการที่เก่ากว่าช่วงที่แสดง
-      if (dateFilter.startDate && date < new Date(dateFilter.startDate)) {
-        return sum + Number(item.M_QTY || 0);
-      }
-      return sum;
-    }, 0);
-
-    return allRecords
+    return bill.allRelatedBills
       .map(item => ({
         id: item.M_ID,
+        numericId: Number(item.M_ID),
         date_time: item.M_DATE,
         quantity_sold: Number(item.M_QTY || 0),
-        // plan_id: item.M_SOURCE_ID,
         transaction_type: item.TRANSACTION_TYPE_NAME,
         username: item.M_USER_NAME,
         source_name: item.M_SOURCE_NAME || '-',
-        initial_total: initialTotal // เก็บยอดเริ่มต้นไว้
       }))
-      .sort((a, b) => new Date(a.date_time) - new Date(b.date_time)); // เรียงจากเก่าไปใหม่
-  }, [bill.relatedBills, bill.allRelatedBills, dateFilter.startDate]);
+      .sort((a, b) => {
+        const dateCompare = compareDatesWithTime(a.date_time, b.date_time);
+        return dateCompare === 0 ? Number(a.id) - Number(b.id) : dateCompare;
+      });
+  }, [bill?.allRelatedBills]);
 
   // ตั้งค่าช่วงวันที่เริ่มต้นเป็นเดือนล่าสุด
   useEffect(() => {
     if (bill?.relatedBills?.length > 0) {
-      // หาวันที่ล่าสุด
       const dates = bill.relatedBills.map(item => new Date(item.M_DATE));
       const maxDate = new Date(Math.max(...dates));
       
-      // คำนวณวันที่เริ่มต้นของเดือนล่าสุด
+      // คำนวณวันที่เริ่มต้นและสิ้นสุดของเดือนล่าสุด
       const startOfMonth = new Date(maxDate.getFullYear(), maxDate.getMonth(), 1);
-      // คำนวณวันที่สิ้นสุดของเดือนล่าสุด
       const endOfMonth = new Date(maxDate.getFullYear(), maxDate.getMonth() + 1, 0);
       
       setDateFilter({
@@ -62,48 +79,101 @@ const BillDetailPopup = ({ bill, onClose }) => {
         endDate: endOfMonth.toISOString().split("T")[0],
       });
     }
-  }, [bill.relatedBills]);
+  }, [bill?.relatedBills]);
 
   // กรองข้อมูลตามช่วงวันที่
   useEffect(() => {
-    if (inventoryData && dateFilter.startDate && dateFilter.endDate) {
-      const filtered = inventoryData.filter((item) => {
-        const itemDate = new Date(item.date_time);
-        const start = new Date(dateFilter.startDate);
-        const end = new Date(dateFilter.endDate);
-
-        start.setHours(0, 0, 0, 0);
-        end.setHours(23, 59, 59, 999);
-        
-        return itemDate >= start && itemDate <= end;
-      });
-      setFilteredInventory(filtered);
-    } else {
+    if (!inventoryData?.length || !dateFilter.startDate || !dateFilter.endDate) {
       setFilteredInventory(inventoryData);
+      return;
     }
+
+    const filtered = inventoryData.filter((item) => {
+      const itemDate = new Date(item.date_time);
+      const start = new Date(dateFilter.startDate);
+      const end = new Date(dateFilter.endDate);
+
+      start.setHours(0, 0, 0, 0);
+      end.setHours(23, 59, 59, 999);
+      
+      return itemDate >= start && itemDate <= end;
+    });
+    
+    setFilteredInventory(filtered);
   }, [inventoryData, dateFilter]);
 
-  // คำนวณ running total โดยใช้ยอดเริ่มต้นจากรายการก่อนหน้า
+  // คำนวณ running total ที่ปรับปรุงใหม่
   const inventoryWithRunningTotal = useMemo(() => {
-    if (filteredInventory.length === 0) return [];
-
-    let runningTotal = filteredInventory[0].initial_total;
-
-    const withRunningTotal = filteredInventory.map(item => {
-      runningTotal += item.quantity_sold;
-
+    if (!filteredInventory?.length || !bill?.allRelatedBills?.length) return [];
+  
+    // 1. เตรียมข้อมูลทั้งหมดและเรียงตามเวลาจากเก่าไปใหม่
+    const sortedAllTransactions = [...bill.allRelatedBills]
+      .map(item => ({
+        id: item.M_ID,
+        date_time: item.M_DATE,
+        quantity_sold: Number(item.M_QTY || 0)
+      }))
+      .sort((a, b) => {
+        const dateA = new Date(a.date_time);
+        const dateB = new Date(b.date_time);
+        if (dateA.getTime() === dateB.getTime()) {
+          return Number(a.id) - Number(b.id);
+        }
+        return dateA - dateB;
+      });
+  
+    // 2. คำนวณค่าคงเหลือสะสมและเก็บประวัติการคำนวณ
+    const runningTotals = new Map();
+    let total = 0;
+    let previousValue = 0;
+  
+    sortedAllTransactions.forEach(transaction => {
+      previousValue = total;
+      total += transaction.quantity_sold;
+      runningTotals.set(transaction.id, {
+        final: total,
+        previous: previousValue,
+        change: transaction.quantity_sold
+      });
+    });
+  
+    // 3. นำข้อมูลที่กรองมาใส่ค่าคำนวณและจัดเรียง
+    const displayData = filteredInventory.map(item => {
+      const calculation = runningTotals.get(item.id);
       return {
         ...item,
-        quantity_in: item.quantity_sold > 0 ? item.quantity_sold : 0,
-        quantity_out: item.quantity_sold < 0 ? Math.abs(item.quantity_sold) : 0,
-        quantity_remaining: runningTotal
+        quantity_remaining: calculation.final,
+        debug_info: {
+          id: item.id,
+          date: item.date_time,
+          previous: calculation.previous,
+          change: calculation.change,
+          final: calculation.final
+        }
       };
     });
-
-    // เรียงจากใหม่ไปเก่าสำหรับการแสดงผล
-    return withRunningTotal.sort((a, b) => new Date(b.date_time) - new Date(a.date_time));
-  }, [filteredInventory]);
-
+  
+    // 4. เรียงข้อมูลสำหรับแสดงผลจากใหม่ไปเก่า
+    return displayData
+      .sort((a, b) => {
+        const dateA = new Date(a.date_time);
+        const dateB = new Date(b.date_time);
+        
+        if (dateA.getTime() === dateB.getTime()) {
+          // กรณีเวลาเดียวกัน
+          if (a.quantity_sold < 0 && b.quantity_sold > 0) return 1;
+          if (a.quantity_sold > 0 && b.quantity_sold < 0) return -1;
+          // ถ้าประเภทเดียวกัน เรียงตาม ID จากมากไปน้อย
+          return Number(b.id) - Number(a.id);
+        }
+        return dateB - dateA;
+      })
+      .map((item, index) => ({
+        ...item,
+        sequence_number: index + 1
+      }));
+  }, [filteredInventory, bill?.allRelatedBills]);
+  
   const handleDateChange = (field, value) => {
     setDateFilter(prev => ({
       ...prev,
@@ -121,6 +191,31 @@ const BillDetailPopup = ({ bill, onClose }) => {
 
   const handleExport = () => {
     exportToExcel(inventoryWithRunningTotal, bill, dateFilter);
+  };
+
+  const DebugCalculation = () => {
+    if (process.env.NODE_ENV === 'production') return null;
+    
+    return (
+      <div className="mt-4 p-4 bg-gray-100 rounded-lg text-xs font-mono overflow-x-auto">
+        <h3 className="font-semibold mb-2">Calculation Debug:</h3>
+        <div className="space-y-1">
+          {inventoryWithRunningTotal.map((item) => (
+            <div key={item.id} className="flex flex-col border-b border-gray-200 py-1">
+              <div className="flex justify-between">
+                <span className="whitespace-nowrap">
+                  #{item.sequence_number} [ID: {item.id}] [{new Date(item.date_time).toLocaleString()}]
+                </span>
+                <span className="ml-4 text-blue-600 whitespace-nowrap">
+                  {item.debug_info.previous} {item.debug_info.change >= 0 ? '+' : ''} 
+                  ({item.debug_info.change}) = {item.debug_info.final}
+                </span>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
   };
 
   if (!bill || !bill.relatedBills) return null;
@@ -166,6 +261,9 @@ const BillDetailPopup = ({ bill, onClose }) => {
                 <InventoryTable 
                   inventory={inventoryWithRunningTotal}
                 />
+                {process.env.NODE_ENV !== 'production' && (
+                  <DebugCalculation />
+                )}
               </div>
             </div>
           </div>
@@ -186,4 +284,4 @@ const BillDetailPopup = ({ bill, onClose }) => {
   );
 };
 
-export default BillDetailPopup;
+export default React.memo(BillDetailPopup);

@@ -1,20 +1,12 @@
 // components/BillCard/QRCode/ScanQrCodePopup.jsx
-import React, { useState, useRef, useEffect, useMemo } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import Webcam from "react-webcam";
 import jsQR from "jsqr";
 import BillDetailPopup from "../Table/view/BillDetail/BillDetailPopup";
 import { Camera, Loader2 } from "lucide-react";
 import Swal from "sweetalert2";
-import { 
-  parseDate, 
-  getLatestMonthAndYear, 
-  isDateInRange,
-  filterBillsByDateRange,
-  groupBillsByPartNumber 
-} from "../../../utils/dateUtils";
-import { useBillFilter } from "../../../hook/useBillFilter";
 
-const ScanQrCodePopup = ({ isOpen, onClose, onSearch, bills }) => {
+const ScanQrCodePopup = ({ isOpen, onClose, bills }) => {
   // Camera states
   const [hasPermission, setHasPermission] = useState(false);
   const [permissionError, setPermissionError] = useState(null);
@@ -32,26 +24,6 @@ const ScanQrCodePopup = ({ isOpen, onClose, onSearch, bills }) => {
   // Refs
   const webcamRef = useRef(null);
 
-  // Get latest month/year and filtered bills
-  const latestDateRange = useMemo(() => getLatestMonthAndYear(bills), [bills]);
-  
-  // Use bill filter hook with latest month
-  const filteredBills = useBillFilter(bills, "", { 
-    startDate: latestDateRange?.startDate,
-    endDate: latestDateRange?.endDate
-  });
-
-  // Group filtered bills by part number
-  const groupedBills = useMemo(() => {
-    if (!latestDateRange) return [];
-    
-    // First filter by date range
-    const dateFilteredBills = filterBillsByDateRange(bills, latestDateRange);
-    
-    // Then group the filtered bills
-    return groupBillsByPartNumber(dateFilteredBills, latestDateRange);
-  }, [bills, latestDateRange]);
-
   // Request camera permission when component mounts
   useEffect(() => {
     const requestCameraPermission = async () => {
@@ -65,10 +37,7 @@ const ScanQrCodePopup = ({ isOpen, onClose, onSearch, bills }) => {
         });
         setHasPermission(true);
         setPermissionError(null);
-        
-        // Stop the stream to let Webcam component take over
         stream.getTracks().forEach(track => track.stop());
-
       } catch (err) {
         console.error('Camera permission error:', err);
         setPermissionError(err.message);
@@ -96,14 +65,13 @@ const ScanQrCodePopup = ({ isOpen, onClose, onSearch, bills }) => {
     }
 
     return () => {
-      // Cleanup
-      if (webcamRef.current && webcamRef.current.stream) {
+      if (webcamRef.current?.stream) {
         webcamRef.current.stream.getTracks().forEach(track => track.stop());
       }
     };
   }, [isOpen, facingMode]);
 
-  // Reset states when component mounts/unmounts
+  // Reset states when component unmounts
   useEffect(() => {
     if (!isOpen) {
       setShowDetailPopup(false);
@@ -119,16 +87,37 @@ const ScanQrCodePopup = ({ isOpen, onClose, onSearch, bills }) => {
     setScanningMessage("พร้อมสแกน QR Code");
   };
 
-  // Find matching bill from QR data
+  // Find matching bill from QR data with improved matching
   const findMatchingBill = (qrData) => {
     if (!qrData?.partNumber) return null;
 
     const qrPartNumber = String(qrData.partNumber).trim().toLowerCase();
     
-    return groupedBills.find(group => {
-      const billPartNumber = String(group?.M_PART_NUMBER || "").trim().toLowerCase();
+    // Find all matching bills
+    const matchingBills = bills.filter(bill => {
+      const billPartNumber = String(bill?.M_PART_NUMBER || "").trim().toLowerCase();
       return billPartNumber === qrPartNumber;
     });
+
+    if (!matchingBills.length) return null;
+
+    // Sort bills by date descending
+    const sortedBills = matchingBills.sort((a, b) => {
+      return new Date(b.M_DATE) - new Date(a.M_DATE);
+    });
+
+    // Calculate total quantities
+    const totalQty = matchingBills.reduce((sum, bill) => sum + Number(bill.M_QTY || 0), 0);
+
+    // Return formatted data structure
+    return {
+      ...sortedBills[0],
+      allRelatedBills: sortedBills,
+      relatedBills: sortedBills,
+      totalQty,
+      billCount: matchingBills.length,
+      latestDate: new Date(sortedBills[0].M_DATE)
+    };
   };
 
   // Handle QR code scanning
@@ -139,11 +128,10 @@ const ScanQrCodePopup = ({ isOpen, onClose, onSearch, bills }) => {
       setIsScanning(true);
       setScanningMessage("กำลังสแกน QR Code...");
 
-      // Get screenshot from webcam
+      // Get and process screenshot
       const imageSrc = webcamRef.current.getScreenshot();
       if (!imageSrc) throw new Error("ไม่สามารถถ่ายภาพได้");
 
-      // Create image from screenshot
       const img = new Image();
       img.src = imageSrc;
 
@@ -153,7 +141,7 @@ const ScanQrCodePopup = ({ isOpen, onClose, onSearch, bills }) => {
         setTimeout(() => reject(new Error("หมดเวลาในการโหลดภาพ")), 3000);
       });
 
-      // Process image
+      // Process QR code
       const canvas = document.createElement("canvas");
       const context = canvas.getContext("2d");
       canvas.width = img.width;
@@ -165,7 +153,7 @@ const ScanQrCodePopup = ({ isOpen, onClose, onSearch, bills }) => {
 
       if (!code) {
         setScanningMessage("ไม่พบ QR Code กรุณาลองใหม่อีกครั้ง");
-        setTimeout(() => setScanningMessage(""), 2000);
+        setTimeout(() => setScanningMessage("พร้อมสแกน QR Code"), 2000);
         return;
       }
 
@@ -180,16 +168,14 @@ const ScanQrCodePopup = ({ isOpen, onClose, onSearch, bills }) => {
       }
 
       const foundBill = findMatchingBill(qrData);
+      console.log("Found Bill:", foundBill);
 
       if (foundBill) {
         if (navigator.vibrate) {
           navigator.vibrate(200);
         }
         
-        setSelectedBill({
-          ...foundBill,
-          dateRange: latestDateRange
-        });
+        setSelectedBill(foundBill);
         setShowDetailPopup(true);
         setScanningMessage("พบข้อมูล Bill แล้ว");
         setShowScanner(false);
@@ -203,22 +189,21 @@ const ScanQrCodePopup = ({ isOpen, onClose, onSearch, bills }) => {
           confirmButtonText: "ตกลง",
           confirmButtonColor: "#3085d6"
         });
+        setScanningMessage("พร้อมสแกน QR Code");
       }
     } catch (error) {
       console.error("Scanning error:", error);
       setScanningMessage(`เกิดข้อผิดพลาด: ${error.message}`);
-      setTimeout(() => setScanningMessage(""), 2000);
+      setTimeout(() => setScanningMessage("พร้อมสแกน QR Code"), 2000);
     } finally {
       setIsScanning(false);
     }
   };
 
-  // Handle flip camera (for devices with multiple cameras)
   const handleFlipCamera = () => {
     setFacingMode(current => current === "user" ? "environment" : "user");
   };
 
-  // Handle close popup
   const handleClose = () => {
     setIsClosing(true);
     setTimeout(() => {
@@ -230,9 +215,7 @@ const ScanQrCodePopup = ({ isOpen, onClose, onSearch, bills }) => {
     }, 500);
   };
 
-  // Handle close detail popup
   const handleCloseDetail = () => {
-    console.log("Closing detail popup");
     setShowDetailPopup(false);
     setSelectedBill(null);
     onClose();
@@ -276,13 +259,11 @@ const ScanQrCodePopup = ({ isOpen, onClose, onSearch, bills }) => {
           onClick={handleClose}
         />
 
-        {/* Main Container */}
         <div className="flex items-center justify-center min-h-screen p-4">
           <div className={`relative w-full max-w-[800px] h-[calc(100vh-2rem)] md:h-auto bg-white/85 rounded-3xl shadow-2xl overflow-hidden animate__animated animate__faster ${
             isClosing ? "animate__zoomOut" : "animate__zoomIn"
           }`}>
             
-            {/* Header */}
             <div className="bg-gradient-to-r from-indigo-600 via-blue-600 to-blue-800 px-4 py-4 shadow-lg">
               <div className="flex items-center justify-between">
                 <div className="flex items-center">
@@ -317,7 +298,6 @@ const ScanQrCodePopup = ({ isOpen, onClose, onSearch, bills }) => {
               </div>
             </div>
 
-            {/* Camera View */}
             <div className="relative h-[calc(100%-64px)] md:h-auto md:aspect-video p-0 md:p-6">
               <div className="relative h-full md:rounded-2xl md:shadow-lg overflow-hidden">
                 {hasPermission ? (
@@ -344,7 +324,6 @@ const ScanQrCodePopup = ({ isOpen, onClose, onSearch, bills }) => {
                   </div>
                 )}
 
-                {/* Scanning Overlay */}
                 {isScanning && (
                   <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
                     <div className="text-center text-white p-4">
@@ -354,10 +333,8 @@ const ScanQrCodePopup = ({ isOpen, onClose, onSearch, bills }) => {
                   </div>
                 )}
 
-                {/* Scanning Frame */}
                 <div className="absolute inset-0 flex items-center justify-center">
                   <div className="relative w-48 md:w-64 h-48 md:h-64">
-                    {/* Corner Lines */}
                     <div className="absolute top-0 left-0 w-8 h-8">
                       <div className="absolute top-0 left-0 w-full h-0.5 bg-blue-600" />
                       <div className="absolute top-0 left-0 w-0.5 h-full bg-blue-600" />
@@ -375,7 +352,6 @@ const ScanQrCodePopup = ({ isOpen, onClose, onSearch, bills }) => {
                       <div className="absolute bottom-0 right-0 w-0.5 h-full bg-blue-600" />
                     </div>
 
-                    {/* Scanning Line */}
                     <div className="absolute inset-0 overflow-hidden">
                       <div className="scanning-line" />
                     </div>
@@ -388,7 +364,6 @@ const ScanQrCodePopup = ({ isOpen, onClose, onSearch, bills }) => {
                   </div>
                 </div>
 
-                {/* Scan Button */}
                 <div className="fixed bottom-20 left-4 right-4 md:absolute md:bottom-4">
                   <button
                     onClick={handleScan}

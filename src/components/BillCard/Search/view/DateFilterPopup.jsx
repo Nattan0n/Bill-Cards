@@ -79,28 +79,28 @@ const DateFilterPopup = ({ isOpen, onClose, onApply, defaultDates }) => {
               <div className="p-6 overflow-y-auto max-h-[calc(90vh-4rem)]">
                 <div className="space-y-6">
                   {/* Start Date */}
-                  <div className="bg-gray-100 dark:bg-gray-700 rounded-xl p-4 shadow-sm">
-                    <label className="block text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">
+                  <div className="bg-gray-700 rounded-xl p-4 shadow-sm">
+                    <label className="block text-sm font-medium text-gray-400 mb-2">
                       Start Date
                     </label>
                     <input
                       type="date"
                       value={startDate}
                       onChange={(e) => setStartDate(e.target.value)}
-                      className="w-full p-3 border-0 rounded-lg bg-white dark:bg-gray-600 text-gray-700 dark:text-gray-200 focus:ring-2 focus:ring-blue-500"
+                      className="w-full p-3 border-0 rounded-lg bg-gray-600 text-gray-200 focus:ring-2 focus:ring-blue-500"
                     />
                   </div>
 
                   {/* End Date */}
-                  <div className="bg-gray-100 dark:bg-gray-700 rounded-xl p-4 shadow-sm">
-                    <label className="block text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">
+                  <div className="bg-gray-700 rounded-xl p-4 shadow-sm">
+                    <label className="block text-sm font-medium text-gray-400 mb-2">
                       End Date
                     </label>
                     <input
                       type="date"
                       value={endDate}
                       onChange={(e) => setEndDate(e.target.value)}
-                      className="w-full p-3 border-0 rounded-lg bg-white dark:bg-gray-600 text-gray-700 dark:text-gray-200 focus:ring-2 focus:ring-blue-500"
+                      className="w-full p-3 border-0 rounded-lg bg-gray-600 text-gray-200 focus:ring-2 focus:ring-blue-500"
                     />
                   </div>
 
@@ -108,7 +108,7 @@ const DateFilterPopup = ({ isOpen, onClose, onApply, defaultDates }) => {
                   <div className="flex justify-end space-x-4 mt-4">
                     <button
                       onClick={handleClose}
-                      className="px-6 py-3 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 rounded-lg font-medium text-gray-600 dark:text-gray-300 transition-colors"
+                      className="px-6 py-3 bg-gray-700 hover:bg-gray-600 rounded-lg font-medium text-gray-300 transition-colors"
                     >
                       Cancel
                     </button>

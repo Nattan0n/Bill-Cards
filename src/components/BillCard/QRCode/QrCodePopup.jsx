@@ -126,25 +126,12 @@ const QrCodePopup = ({ bills, onClose }) => {
                     <span class="qr-info-label">Date:</span>
                     <span class="qr-info-value">${bill.M_DATE}</span>
                   </div>
-                  ${
-                    Number(bill.M_QTY) > 0
-                      ? `
-                    <div class="qr-info-row">
-                      <span class="qr-info-label">Quantity In:</span>
-                      <span class="qr-info-value">${Math.abs(
-                        Number(bill.M_QTY)
-                      )}</span>
-                    </div>
-                  `
-                      : `
-                    <div class="qr-info-row">
-                      <span class="qr-info-label">Quantity Out:</span>
-                      <span class="qr-info-value">-${Math.abs(
-                        Number(bill.M_QTY)
-                      )}</span>
-                    </div>
-                  `
-                  }
+                  <div class="qr-info-row">
+                    <span class="qr-info-label">Transaction Type:</span>
+                    <span class="qr-info-value">${
+                      bill.TRANSACTION_TYPE_NAME
+                    }</span>
+                  </div>
                 </div>
                 <div class="qr-image-container">
                   <img 
@@ -293,15 +280,18 @@ const QrCodePopup = ({ bills, onClose }) => {
                               inventory
                             </span>
                             <span
-                              className={`font-medium ${
-                                Number(bill.M_QTY) > 0
-                                  ? "text-green-600"
-                                  : "text-red-600"
-                              }`}
+                              className={`inline-flex items-center px-2.5 py-1 rounded-lg ${
+                                bill.totalQty > 0
+                                  ? "bg-green-50 text-green-700"
+                                  : "bg-red-50 text-red-700"
+                              } text-xs font-medium`}
                             >
-                              {Number(bill.M_QTY) > 0
-                                ? `+${Math.abs(Number(bill.M_QTY))}`
-                                : `-${Math.abs(Number(bill.M_QTY))}`}
+                              <span className="material-symbols-outlined text-sm mr-1">
+                                {bill.totalQty > 0
+                                  ? "add_circle"
+                                  : "remove_circle"}
+                              </span>
+                              {bill.totalQty}
                             </span>
                           </div>
                         </div>
@@ -335,9 +325,11 @@ const QrCodePopup = ({ bills, onClose }) => {
 
       {/* Mobile View */}
       <div className="md:hidden">
-        <div className={`fixed inset-0 flex flex-col bg-white/85 animate__animated animate__faster ${
+        <div
+          className={`fixed inset-0 flex flex-col bg-white/85 animate__animated animate__faster ${
             isClosing ? "animate__zoomOut" : "animate__zoomIn"
-          }`}>
+          }`}
+        >
           {/* Mobile Header */}
           <div className="bg-gradient-to-r from-indigo-600 via-blue-600 to-blue-800 px-4 py-4 shadow-lg">
             <div className="flex items-center justify-between">

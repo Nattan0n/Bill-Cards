@@ -128,7 +128,7 @@ const Pagination = ({
                   className={`relative inline-flex items-center px-4 py-2 text-sm font-medium border border-gray-200
                     ${
                       currentPage === page
-                        ? "z-10 bg-gradient-to-r from-indigo-600 via-blue-600 to-blue-700 text-white hover:from-blue-700 hover:via-blue-600 hover:to-indigo-700 border-blue-600"
+                        ? "z-0 bg-gradient-to-r from-indigo-600 via-blue-600 to-blue-700 text-white hover:from-blue-700 hover:via-blue-600 hover:to-indigo-700 border-blue-600"
                         : "text-gray-700 bg-white hover:bg-blue-50 hover:text-blue-600"
                     } 
                     transition-colors duration-200`}
@@ -206,7 +206,7 @@ const Pagination = ({
               page === "..."
                 ? "text-gray-500 bg-white cursor-default"
                 : currentPage === page
-                ? "z-10 bg-blue-600 text-white border-blue-600"
+                ? "z-0 bg-blue-600 text-white border-blue-600"
                 : "text-gray-700 bg-white hover:bg-blue-50 hover:text-blue-600"
             } 
             transition-colors duration-200`}

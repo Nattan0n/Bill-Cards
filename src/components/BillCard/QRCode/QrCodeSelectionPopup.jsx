@@ -187,7 +187,7 @@ const QrCodeSelectionPopup = ({
                       className={`w-full p-4 rounded-lg transition-colors duration-200 ${
                         selectedType === type
                           ? "bg-gradient-to-r from-indigo-600 via-blue-600 to-blue-800 text-white"
-                          : "bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 hover:bg-gray-200"
+                          : "bg-gray-700 text-gray-400 hover:bg-gray-200"
                       } flex items-center justify-between ${
                         isLoading ? "opacity-50 cursor-not-allowed" : ""
                       }`}
@@ -207,7 +207,7 @@ const QrCodeSelectionPopup = ({
 
                   {/* Dropdown for part number selection */}
                   {selectedType === "partno" && (
-                    <div className="bg-gray-100 dark:bg-gray-700 rounded-lg p-4">
+                    <div className="bg-gray-700 rounded-lg p-4">
                       <label className="block text-sm font-medium text-gray-500 dark:text-gray-400 uppercase mb-2">
                         Select Part Number
                       </label>
@@ -215,7 +215,7 @@ const QrCodeSelectionPopup = ({
                         value={selectedValue}
                         onChange={handleValueChange}
                         disabled={isLoading}
-                        className={`w-full p-3 border-0 rounded-lg bg-white dark:bg-gray-600 text-gray-700 dark:text-gray-200 focus:ring-2 focus:ring-blue-500 ${
+                        className={`w-full p-3 border-0 rounded-lg bg-gray-600 text-gray-200 focus:ring-2 focus:ring-blue-500 ${
                           isLoading ? "opacity-50 cursor-not-allowed" : ""
                         }`}
                       >
@@ -241,11 +241,11 @@ const QrCodeSelectionPopup = ({
           </div>
 
           {/* Footer */}
-          <div className="flex justify-end space-x-2 px-6 py-4 bg-gray-100 dark:bg-gray-800">
+          <div className="flex justify-end space-x-2 px-6 py-4 bg-gray-800">
             <button
               onClick={handleClose}
               disabled={isLoading}
-              className={`px-6 py-3 bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 rounded-lg font-medium text-gray-600 dark:text-gray-300 transition-colors duration-200 ${
+              className={`px-6 py-3  bg-gray-700 hover:bg-gray-600 rounded-lg font-medium text-gray-300 transition-colors duration-200 ${
                 isLoading ? "opacity-50 cursor-not-allowed" : ""
               }`}
             >

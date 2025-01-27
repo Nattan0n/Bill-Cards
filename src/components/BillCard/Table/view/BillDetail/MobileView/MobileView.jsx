@@ -81,7 +81,6 @@ export const MobileView = ({
 
           {/* Inventory Records */}
           <div className="bg-white rounded-2xl shadow-sm overflow-hidden border border-gray-200">
-            {/* Header */}
             <div className="bg-gradient-to-r from-[#4052e5] to-[#4052e5]/90 p-4 rounded-t-lg flex justify-between items-center">
               <div className="flex items-center gap-3">
                 <span className="material-symbols-outlined text-blue-600 p-2 bg-white rounded-full">
@@ -98,11 +97,10 @@ export const MobileView = ({
 
             <div className="divide-y divide-gray-100">
               {inventoryWithRunningTotal.length > 0 ? (
-                inventoryWithRunningTotal.map((item, index) => (
+                inventoryWithRunningTotal.map((item) => (
                   <InventoryRecord 
-                    key={item.id || index} 
+                    key={`${item.id}-${item.sequence_number}`}
                     item={item} 
-                    index={index}
                   />
                 ))
               ) : (
@@ -121,7 +119,6 @@ export const MobileView = ({
             </div>
           </div>
 
-          {/* Bottom Spacing */}
           <div className="h-4" />
         </div>
       </div>

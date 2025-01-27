@@ -9,6 +9,7 @@ import { useBillFilter } from "../../hook/useBillFilter";
 import { inventoryService } from "../../services/inventoryService";
 import { billCardService } from "../../services/billCardService";
 import debounce from "lodash/debounce";
+import { BlinkBlur } from "react-loading-indicators";
 
 const BillCard = () => {
   // States
@@ -17,27 +18,25 @@ const BillCard = () => {
   const [selectedBills, setSelectedBills] = useState([]);
   const [dateFilter, setDateFilter] = useState(null);
   const [selectedTableRows, setSelectedTableRows] = useState([]);
-  const [selectedSubInv, setSelectedSubInv] = useState('GP-DAIK');
+  const [selectedSubInv, setSelectedSubInv] = useState("GP-DAIK");
   const [inventories, setInventories] = useState([]);
   const [bills, setBills] = useState([]);
   const [isLoadingInventories, setIsLoadingInventories] = useState(true);
   const [isLoadingBills, setIsLoadingBills] = useState(true);
   const itemsPerPage = 8;
 
-  // Load inventories when component mounts
+  // Load data effects
   useEffect(() => {
     const loadInventories = async () => {
       try {
         setIsLoadingInventories(true);
         const invData = await inventoryService.getInventories();
         setInventories(invData);
-        
-        // Set GP-DAIK as default if available
-        if (!selectedSubInv && invData.some(inv => inv.name === "GP-DAIK")) {
+        if (!selectedSubInv && invData.some((inv) => inv.name === "GP-DAIK")) {
           setSelectedSubInv("GP-DAIK");
         }
       } catch (error) {
-        console.error('Failed to load inventories:', error);
+        console.error("Failed to load inventories:", error);
       } finally {
         setIsLoadingInventories(false);
       }
@@ -45,7 +44,6 @@ const BillCard = () => {
     loadInventories();
   }, []);
 
-  // Load bills when subInventory changes
   useEffect(() => {
     const loadBills = async () => {
       try {
@@ -53,22 +51,24 @@ const BillCard = () => {
         const data = await billCardService.getBillCards(selectedSubInv);
         setBills(data);
       } catch (error) {
-        console.error('Failed to load bills:', error);
+        console.error("Failed to load bills:", error);
       } finally {
         setIsLoadingBills(false);
       }
     };
-
     loadBills();
   }, [selectedSubInv]);
 
   // Callbacks
-  const handleSubInvChange = useCallback((subInv) => {
-    billCardService.clearCache(selectedSubInv); // ล้าง cache เมื่อเปลี่ยน subInv
-    setSelectedSubInv(subInv);
-    setCurrentPage(1);
-    setSelectedBills([]);
-  }, [selectedSubInv]);
+  const handleSubInvChange = useCallback(
+    (subInv) => {
+      billCardService.clearCache(selectedSubInv);
+      setSelectedSubInv(subInv);
+      setCurrentPage(1);
+      setSelectedBills([]);
+    },
+    [selectedSubInv]
+  );
 
   const handleFilterChange = useCallback((dateRange) => {
     setDateFilter(dateRange);
@@ -98,28 +98,25 @@ const BillCard = () => {
     [debouncedSearch]
   );
 
-  // Memoized data
+  // Memoized data calculations
   const totalQuantityByPart = useMemo(() => {
     const totals = new Map();
     if (!bills?.length) return totals;
-    
-    bills.forEach(bill => {
+
+    bills.forEach((bill) => {
       const partNumber = bill.M_PART_NUMBER;
       if (!partNumber) return;
-      
       const currentTotal = totals.get(partNumber) || 0;
       totals.set(partNumber, currentTotal + Number(bill.M_QTY || 0));
     });
-    
+
     return totals;
   }, [bills]);
 
-  // Filtered and grouped data
   const rawFilteredBills = useBillFilter(bills, search, dateFilter);
 
   const filteredBills = useMemo(() => {
     if (!rawFilteredBills) return [];
-    // ไม่ต้อง filter ด้วย subInventory อีกเพราะข้อมูลถูก filter มาแล้วจาก API
     return rawFilteredBills;
   }, [rawFilteredBills]);
 
@@ -155,7 +152,9 @@ const BillCard = () => {
         billCount: relatedBills.length,
         relatedBills: sortedBills,
         latestDate: parseDate(sortedBills[0].M_DATE),
-        allRelatedBills: bills.filter(b => b.M_PART_NUMBER === bill.M_PART_NUMBER)
+        allRelatedBills: bills.filter(
+          (b) => b.M_PART_NUMBER === bill.M_PART_NUMBER
+        ),
       });
     });
 
@@ -170,7 +169,8 @@ const BillCard = () => {
   // Export handler
   const exportToExcel = useCallback(async () => {
     try {
-      const dataToExport = selectedBills.length > 0 ? selectedBills : groupedBills;
+      const dataToExport =
+        selectedBills.length > 0 ? selectedBills : groupedBills;
       await exportPartListToExcel(dataToExport);
     } catch (error) {
       console.error("Export failed:", error);
@@ -199,7 +199,7 @@ const BillCard = () => {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="flex flex-col items-center space-y-4">
-          <div className="w-12 h-12 border-4 border-blue-400 border-t-transparent rounded-full animate-spin"></div>
+        <BlinkBlur color="#dd1414" size="small" text="" textColor="" />
           <p className="text-gray-600">Loading data...</p>
         </div>
       </div>
@@ -207,85 +207,47 @@ const BillCard = () => {
   }
 
   return (
-    <div>
-      {/* Desktop View */}
-      <div className="hidden md:block">
-        <div className="overflow-y-auto h-screen">
-          <div className="py-12">
-            <div className="max-w-8xl mx-auto sm:px-6 lg:px-8">
-              <div className="bg-white overflow-hidden shadow-sm sm:rounded-3xl">
-                <div className="p-6 text-gray-900">
-                  <BillSearch
-                    onSearch={handleSearch}
-                    onExport={exportToExcel}
-                    bills={bills}
-                    inventories={inventories}
-                    onFilterChange={handleFilterChange}
-                    onSelectSubInv={handleSubInvChange}
-                    selectedSubInv={selectedSubInv}
-                    isFiltered={!!dateFilter}
-                    defaultDates={dateFilter}
-                    filteredBills={groupedBills}
-                    selectedTableRows={selectedTableRows}
-                  />
-                  <BillTable
-                    bills={currentBills}
-                    startingIndex={indexOfFirstBill}
-                    onSelectedRowsChange={handleSelectedRowsChange}
-                    key={`${currentPage}-${dateFilter?.startDate}-${dateFilter?.endDate}-${selectedSubInv}`}
-                    allBills={bills}
-                  />
-                  <Pagination
-                    totalPages={totalPages}
-                    currentPage={currentPage}
-                    totalItems={totalItems}
-                    onPageChange={handlePageChange}
-                    itemsPerPage={itemsPerPage}
-                  />
-                </div>
-              </div>
+    <div className="min-h-screen">
+      <div className="max-w-8xl mx-auto sm:px-6 lg:px-8 md:py-6 overflow-y-auto h-screen">
+        <div className="bg-white shadow-sm rounded-3xl mb-20">
+          <div className=" lg:p-6 text-gray-900">
+            {/* Search Section */}
+            <div className="sticky top-0 z-10">
+              <BillSearch
+                onSearch={handleSearch}
+                onExport={exportToExcel}
+                bills={bills}
+                inventories={inventories}
+                onFilterChange={handleFilterChange}
+                onSelectSubInv={handleSubInvChange}
+                selectedSubInv={selectedSubInv}
+                isFiltered={!!dateFilter}
+                defaultDates={dateFilter}
+                filteredBills={groupedBills}
+                selectedTableRows={selectedTableRows}
+              />
             </div>
-          </div>
-        </div>
-      </div>
 
-      {/* Mobile View */}
-      <div className="block md:hidden">
-        <div className="h-screen flex flex-col overflow-hidden">
-          <div className="sticky top-0 bg-white z-10 shadow-sm">
-            <BillSearch
-              onSearch={handleSearch}
-              onExport={exportToExcel}
-              bills={bills}
-              inventories={inventories}
-              onFilterChange={handleFilterChange}
-              onSelectSubInv={handleSubInvChange}
-              selectedSubInv={selectedSubInv}
-              isFiltered={!!dateFilter}
-              defaultDates={dateFilter}
-              selectedTableRows={selectedTableRows}
-            />
-          </div>
-          <div className="flex-1 overflow-y-auto">
-            <div className="max-w-8xl mx-auto sm:px-6 lg:px-8">
-              <div className="bg-white overflow-hidden shadow-sm sm:rounded-lg">
-                <div className="text-gray-900">
-                  <BillTable
-                    bills={currentBills}
-                    startingIndex={indexOfFirstBill}
-                    onSelectedRowsChange={handleSelectedRowsChange}
-                    key={`${currentPage}-${search}-${dateFilter?.startDate}-${dateFilter?.endDate}-${selectedSubInv}`}
-                    allBills={bills}
-                  />
-                  <Pagination
-                    totalPages={totalPages}
-                    currentPage={currentPage}
-                    totalItems={totalItems}
-                    onPageChange={handlePageChange}
-                    itemsPerPage={itemsPerPage}
-                  />
-                </div>
-              </div>
+            {/* Table Section */}
+            <div className="sm:mt-6">
+              <BillTable
+                bills={currentBills}
+                startingIndex={indexOfFirstBill}
+                onSelectedRowsChange={handleSelectedRowsChange}
+                key={`${currentPage}-${dateFilter?.startDate}-${dateFilter?.endDate}-${selectedSubInv}-${search}`}
+                allBills={bills}
+              />
+            </div>
+
+            {/* Pagination Section */}
+            <div className="mt-6">
+              <Pagination
+                totalPages={totalPages}
+                currentPage={currentPage}
+                totalItems={totalItems}
+                onPageChange={handlePageChange}
+                itemsPerPage={itemsPerPage}
+              />
             </div>
           </div>
         </div>
@@ -294,4 +256,4 @@ const BillCard = () => {
   );
 };
 
-export default BillCard;
+export default React.memo(BillCard);

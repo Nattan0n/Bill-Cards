@@ -5,12 +5,12 @@ import Logo from "../../../assets/images/thairung-logo.png"
 
 export const getQRCodeDataUrl = async (bill) => {
   try {
-    // สร้าง QR code พื้นฐาน
+    // สร้าง QR code พื้นฐานพร้อมข้อมูล subinventory
     const qrDataUrl = await QRCode.toDataURL(
       JSON.stringify({
         partNumber: bill.M_PART_NUMBER,
+        subinventory: bill.M_SUBINV, // เพิ่มข้อมูล subinventory
         // partDescription: bill.M_PART_DESCRIPTION,
-        // customer: bill.M_SUBINV,
         // date: bill.M_DATE,
         // quantity: bill.M_QTY,
       }),
@@ -54,7 +54,7 @@ export const getQRCodeDataUrl = async (bill) => {
       });
 
       // คำนวณขนาดของ logo แบบสี่เหลี่ยมผืนผ้า
-      const logoWidth = size * 0.2; // ความกว้าง 40% ของ QR Code
+      const logoWidth = size * 0.2; // ความกว้าง 20% ของ QR Code
       const logoHeight = logoWidth * (logo.height / logo.width); // คำนวณความสูงตามอัตราส่วน
       const logoX = (size - logoWidth) / 2;
       const logoY = (size - logoHeight) / 2;

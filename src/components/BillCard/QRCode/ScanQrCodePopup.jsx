@@ -6,7 +6,7 @@ import BillDetailPopup from "../Table/view/BillDetail/BillDetailPopup";
 import { Camera, Loader2 } from "lucide-react";
 import Swal from "sweetalert2";
 
-const ScanQrCodePopup = ({ isOpen, onClose, bills }) => {
+const ScanQrCodePopup = ({ isOpen, onClose, bills, onSelectSubInv, selectedSubInv }) => {
   // Camera states
   const [hasPermission, setHasPermission] = useState(false);
   const [permissionError, setPermissionError] = useState(null);
@@ -21,8 +21,23 @@ const ScanQrCodePopup = ({ isOpen, onClose, bills }) => {
   const [isClosing, setIsClosing] = useState(false);
   const [showScanner, setShowScanner] = useState(true);
   
+  // Data states
+  const [isChangingSubInv, setIsChangingSubInv] = useState(false);
+  const [previousBills, setPreviousBills] = useState(bills);
+  const latestQrData = useRef(null);
+  
   // Refs
   const webcamRef = useRef(null);
+
+  // Effect to handle bills update after subinventory change
+  useEffect(() => {
+    const handleBillsUpdate = async () => {
+      if (isChangingSubInv && bills !== previousBills && latestQrData.current) {
+        await handleRescan();
+      }
+    };
+    handleBillsUpdate();
+  }, [bills, previousBills, isChangingSubInv]);
 
   // Request camera permission when component mounts
   useEffect(() => {
@@ -78,8 +93,11 @@ const ScanQrCodePopup = ({ isOpen, onClose, bills }) => {
       setSelectedBill(null);
       setShowScanner(true);
       setIsCameraReady(false);
+      setIsChangingSubInv(false);
+      setPreviousBills(bills);
+      latestQrData.current = null;
     }
-  }, [isOpen]);
+  }, [isOpen, bills]);
 
   // Handle camera ready state
   const handleUserMedia = () => {
@@ -89,7 +107,7 @@ const ScanQrCodePopup = ({ isOpen, onClose, bills }) => {
 
   // Find matching bill from QR data with improved matching
   const findMatchingBill = (qrData) => {
-    if (!qrData?.partNumber) return null;
+    if (!qrData?.partNumber || !bills) return null;
 
     const qrPartNumber = String(qrData.partNumber).trim().toLowerCase();
     
@@ -120,83 +138,180 @@ const ScanQrCodePopup = ({ isOpen, onClose, bills }) => {
     };
   };
 
+  // Handle rescanning after subinventory change
+  const handleRescan = async () => {
+    if (!latestQrData.current) return;
+
+    try {
+      setScanningMessage("กำลังค้นหาข้อมูล...");
+      setIsScanning(true);
+
+      let attempts = 0;
+      let foundBill = null;
+      
+      while (attempts < 10) {
+        foundBill = findMatchingBill(latestQrData.current);
+        
+        if (foundBill) {
+          console.log('Found bill on attempt:', attempts + 1, foundBill);
+          break;
+        }
+        
+        attempts++;
+        setScanningMessage(`กำลังค้นหาข้อมูล... (พยายามครั้งที่ ${attempts}/10)`);
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      }
+
+      if (foundBill) {
+        if (navigator.vibrate) navigator.vibrate(200);
+        setScanningMessage("พบข้อมูล! กำลังแสดงรายละเอียด...");
+
+        // ทำให้แน่ใจว่า state ถูกอัปเดตตามลำดับ
+        await new Promise(resolve => {
+          setSelectedBill(foundBill);
+          setShowScanner(false);
+          setTimeout(resolve, 100);
+        });
+
+        setShowDetailPopup(true);
+      } else {
+        await Swal.fire({
+          title: "ไม่พบข้อมูล",
+          html: `ไม่พบข้อมูล Bill ที่ตรงกับ QR Code หลังจากลองค้นหาแล้ว ${attempts} ครั้ง<br><br>
+                 <strong>ข้อมูลที่สแกนได้:</strong><br>
+                 Part Number: ${latestQrData.current.partNumber || 'ไม่พบข้อมูล'}<br>
+                 Subinventory จาก QR: ${latestQrData.current.subinventory || 'ไม่พบข้อมูล'}`,
+          icon: "warning",
+          confirmButtonText: "ตกลง",
+          confirmButtonColor: "#3085d6"
+        });
+      }
+    } catch (error) {
+      console.error("Rescan error:", error);
+      await Swal.fire({
+        title: "เกิดข้อผิดพลาด",
+        text: `ไม่สามารถค้นหาข้อมูลได้: ${error.message}`,
+        icon: "error",
+        confirmButtonText: "ตกลง",
+        confirmButtonColor: "#3085d6"
+      });
+    } finally {
+      if (!showDetailPopup) {
+        setIsScanning(false);
+        setIsChangingSubInv(false);
+        setScanningMessage("พร้อมสแกน QR Code");
+      }
+    }
+  };
+
   // Handle QR code scanning
   const handleScan = async () => {
-    if (!webcamRef.current || !hasPermission || !isCameraReady) return;
-    
+    if (!webcamRef.current || !hasPermission || !isCameraReady || isChangingSubInv) return;
+  
     try {
       setIsScanning(true);
       setScanningMessage("กำลังสแกน QR Code...");
-
-      // Get and process screenshot
+  
       const imageSrc = webcamRef.current.getScreenshot();
       if (!imageSrc) throw new Error("ไม่สามารถถ่ายภาพได้");
-
+  
       const img = new Image();
       img.src = imageSrc;
-
       await new Promise((resolve, reject) => {
         img.onload = resolve;
         img.onerror = reject;
         setTimeout(() => reject(new Error("หมดเวลาในการโหลดภาพ")), 3000);
       });
-
-      // Process QR code
+  
       const canvas = document.createElement("canvas");
       const context = canvas.getContext("2d");
       canvas.width = img.width;
       canvas.height = img.height;
       context.drawImage(img, 0, 0);
-
+  
       const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
       const code = jsQR(imageData.data, imageData.width, imageData.height);
-
+  
       if (!code) {
         setScanningMessage("ไม่พบ QR Code กรุณาลองใหม่อีกครั้ง");
         setTimeout(() => setScanningMessage("พร้อมสแกน QR Code"), 2000);
         return;
       }
-
-      setScanningMessage("กำลังตรวจสอบข้อมูล...");
-
+  
       let qrData;
       try {
         qrData = JSON.parse(code.data);
-        console.log("Scanned QR Data:", qrData);
       } catch (error) {
         throw new Error("QR Code ไม่ถูกต้อง");
       }
+  
+      const scannedSubInv = qrData.subinventory;
+      const scannedPartNumber = qrData.partNumber;
+  
+      if (!scannedSubInv || !scannedPartNumber) {
+        throw new Error("QR Code ไม่มีข้อมูลที่จำเป็น");
+      }
 
-      const foundBill = findMatchingBill(qrData);
-      console.log("Found Bill:", foundBill);
-
-      if (foundBill) {
-        if (navigator.vibrate) {
-          navigator.vibrate(200);
+      // Store the latest QR data
+      latestQrData.current = qrData;
+  
+      // ค้นหา Part Number ในข้อมูลปัจจุบันก่อน
+      let foundBill = findMatchingBill(qrData);
+      
+      // ถ้าไม่พบและ subinventory ไม่ตรงกับปัจจุบัน
+      if (!foundBill && scannedSubInv !== selectedSubInv) {
+        const willChange = await Swal.fire({
+          title: "พบข้อมูลจาก Subinventory อื่น",
+          html: `Part Number นี้อยู่ใน ${scannedSubInv}<br>ต้องการเปลี่ยน Subinventory หรือไม่?`,
+          icon: "question",
+          showCancelButton: true,
+          confirmButtonText: "เปลี่ยน",
+          cancelButtonText: "ยกเลิก",
+          confirmButtonColor: "#3085d6",
+          cancelButtonColor: "#d33"
+        });
+  
+        if (willChange.isConfirmed) {
+          setIsChangingSubInv(true);
+          setPreviousBills(bills);
+          setScanningMessage(`กำลังเปลี่ยน Subinventory เป็น ${scannedSubInv}...`);
+          await onSelectSubInv(scannedSubInv);
+          return;
         }
+      }
+  
+      if (foundBill) {
+        if (navigator.vibrate) navigator.vibrate(200);
+        setScanningMessage("พบข้อมูล! กำลังแสดงรายละเอียด...");
         
-        setSelectedBill(foundBill);
+        // ทำให้แน่ใจว่า state ถูกอัปเดตตามลำดับ
+        await new Promise(resolve => {
+          setSelectedBill(foundBill);
+          setShowScanner(false);
+          setTimeout(resolve, 100);
+        });
+
         setShowDetailPopup(true);
-        setScanningMessage("พบข้อมูล Bill แล้ว");
-        setShowScanner(false);
       } else {
         await Swal.fire({
           title: "ไม่พบข้อมูล",
           html: `ไม่พบข้อมูล Bill ที่ตรงกับ QR Code<br><br>
                  <strong>ข้อมูลที่สแกนได้:</strong><br>
-                 Part Number: ${qrData.partNumber || 'ไม่พบข้อมูล'}`,
+                 Part Number: ${scannedPartNumber || 'ไม่พบข้อมูล'}<br>
+                 Subinventory จาก QR: ${scannedSubInv || 'ไม่พบข้อมูล'}`,
           icon: "warning",
           confirmButtonText: "ตกลง",
           confirmButtonColor: "#3085d6"
         });
-        setScanningMessage("พร้อมสแกน QR Code");
       }
     } catch (error) {
       console.error("Scanning error:", error);
       setScanningMessage(`เกิดข้อผิดพลาด: ${error.message}`);
       setTimeout(() => setScanningMessage("พร้อมสแกน QR Code"), 2000);
     } finally {
-      setIsScanning(false);
+      if (!showDetailPopup) {
+        setIsScanning(false);
+      }
     }
   };
 
@@ -218,6 +333,7 @@ const ScanQrCodePopup = ({ isOpen, onClose, bills }) => {
   const handleCloseDetail = () => {
     setShowDetailPopup(false);
     setSelectedBill(null);
+    setShowScanner(true);
     onClose();
   };
 
@@ -389,10 +505,12 @@ const ScanQrCodePopup = ({ isOpen, onClose, bills }) => {
 
       {/* Bill Detail Popup */}
       {showDetailPopup && selectedBill && (
-        <BillDetailPopup
-          bill={selectedBill}
-          onClose={handleCloseDetail}
-        />
+        <div className="fixed inset-0 z-[60]">
+          <BillDetailPopup
+            bill={selectedBill}
+            onClose={handleCloseDetail}
+          />
+        </div>
       )}
     </>
   );

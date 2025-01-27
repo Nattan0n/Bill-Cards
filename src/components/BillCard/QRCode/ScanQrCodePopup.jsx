@@ -1,4 +1,3 @@
-// components/BillCard/QRCode/ScanQrCodePopup.jsx
 import React, { useState, useRef, useEffect } from "react";
 import Webcam from "react-webcam";
 import jsQR from "jsqr";
@@ -10,8 +9,8 @@ const ScanQrCodePopup = ({
   isOpen, 
   onClose, 
   bills, 
-  onSelectSubInv,  // รับ prop นี้
-  selectedSubInv,  // รับ prop นี้
+  onSelectSubInv,  
+  selectedSubInv,  
 }) => {
   // Camera states
   const [hasPermission, setHasPermission] = useState(false);
@@ -35,15 +34,76 @@ const ScanQrCodePopup = ({
   // Refs
   const webcamRef = useRef(null);
 
+  // Debug logs
+  useEffect(() => {
+    console.log('ScanQrCodePopup props:', {
+      onSelectSubInv: typeof onSelectSubInv,
+      selectedSubInv,
+      isChangingSubInv,
+      billsChanged: bills !== previousBills
+    });
+  }, [onSelectSubInv, selectedSubInv, isChangingSubInv, bills, previousBills]);
+
   // Effect to handle bills update after subinventory change
   useEffect(() => {
     const handleBillsUpdate = async () => {
       if (isChangingSubInv && bills !== previousBills && latestQrData.current) {
-        await handleRescan();
+        try {
+          console.log('Attempting auto rescan with data:', latestQrData.current);
+          setScanningMessage("กำลังค้นหาข้อมูลใน Subinventory ใหม่...");
+          setIsScanning(true);
+
+          // รอให้ข้อมูลอัพเดทเสร็จ
+          await new Promise(resolve => setTimeout(resolve, 1000));
+
+          const foundBill = findMatchingBill(latestQrData.current);
+          if (foundBill) {
+            console.log('Found bill after subinventory change:', foundBill);
+            if (navigator.vibrate) navigator.vibrate(200);
+            setScanningMessage("พบข้อมูล! กำลังแสดงรายละเอียด...");
+
+            // รอให้ UI อัพเดท
+            await new Promise(resolve => {
+              setSelectedBill(foundBill);
+              setShowScanner(false);
+              setTimeout(resolve, 100);
+            });
+
+            setShowDetailPopup(true);
+          } else {
+            console.log('No matching bill found in new subinventory');
+            await Swal.fire({
+              title: "ไม่พบข้อมูล",
+              html: `ไม่พบข้อมูล Bill ที่ตรงกับ QR Code ใน Subinventory ใหม่<br><br>
+                     <strong>ข้อมูลที่สแกนได้:</strong><br>
+                     Part Number: ${latestQrData.current.partNumber || 'ไม่พบข้อมูล'}<br>
+                     Subinventory ใหม่: ${selectedSubInv || 'ไม่พบข้อมูล'}`,
+              icon: "warning",
+              confirmButtonText: "ตกลง",
+              confirmButtonColor: "#3085d6"
+            });
+          }
+        } catch (error) {
+          console.error("Auto rescan error:", error);
+          await Swal.fire({
+            title: "เกิดข้อผิดพลาด",
+            text: `ไม่สามารถค้นหาข้อมูลได้: ${error.message}`,
+            icon: "error",
+            confirmButtonText: "ตกลง",
+            confirmButtonColor: "#3085d6"
+          });
+        } finally {
+          setIsScanning(false);
+          setIsChangingSubInv(false);
+          if (!showDetailPopup) {
+            setScanningMessage("พร้อมสแกน QR Code");
+          }
+        }
       }
     };
+
     handleBillsUpdate();
-  }, [bills, previousBills, isChangingSubInv]);
+  }, [bills, previousBills, isChangingSubInv, selectedSubInv, showDetailPopup]);
 
   // Request camera permission when component mounts
   useEffect(() => {
@@ -144,72 +204,6 @@ const ScanQrCodePopup = ({
     };
   };
 
-  // Handle rescanning after subinventory change
-  const handleRescan = async () => {
-    if (!latestQrData.current) return;
-
-    try {
-      setScanningMessage("กำลังค้นหาข้อมูล...");
-      setIsScanning(true);
-
-      let attempts = 0;
-      let foundBill = null;
-      
-      while (attempts < 10) {
-        foundBill = findMatchingBill(latestQrData.current);
-        
-        if (foundBill) {
-          console.log('Found bill on attempt:', attempts + 1, foundBill);
-          break;
-        }
-        
-        attempts++;
-        setScanningMessage(`กำลังค้นหาข้อมูล... (พยายามครั้งที่ ${attempts}/10)`);
-        await new Promise(resolve => setTimeout(resolve, 1000));
-      }
-
-      if (foundBill) {
-        if (navigator.vibrate) navigator.vibrate(200);
-        setScanningMessage("พบข้อมูล! กำลังแสดงรายละเอียด...");
-
-        // ทำให้แน่ใจว่า state ถูกอัปเดตตามลำดับ
-        await new Promise(resolve => {
-          setSelectedBill(foundBill);
-          setShowScanner(false);
-          setTimeout(resolve, 100);
-        });
-
-        setShowDetailPopup(true);
-      } else {
-        await Swal.fire({
-          title: "ไม่พบข้อมูล",
-          html: `ไม่พบข้อมูล Bill ที่ตรงกับ QR Code หลังจากลองค้นหาแล้ว ${attempts} ครั้ง<br><br>
-                 <strong>ข้อมูลที่สแกนได้:</strong><br>
-                 Part Number: ${latestQrData.current.partNumber || 'ไม่พบข้อมูล'}<br>
-                 Subinventory จาก QR: ${latestQrData.current.subinventory || 'ไม่พบข้อมูล'}`,
-          icon: "warning",
-          confirmButtonText: "ตกลง",
-          confirmButtonColor: "#3085d6"
-        });
-      }
-    } catch (error) {
-      console.error("Rescan error:", error);
-      await Swal.fire({
-        title: "เกิดข้อผิดพลาด",
-        text: `ไม่สามารถค้นหาข้อมูลได้: ${error.message}`,
-        icon: "error",
-        confirmButtonText: "ตกลง",
-        confirmButtonColor: "#3085d6"
-      });
-    } finally {
-      if (!showDetailPopup) {
-        setIsScanning(false);
-        setIsChangingSubInv(false);
-        setScanningMessage("พร้อมสแกน QR Code");
-      }
-    }
-  };
-
   // Handle QR code scanning
   const handleScan = async () => {
     if (!webcamRef.current || !hasPermission || !isCameraReady || isChangingSubInv) return;
@@ -278,25 +272,29 @@ const ScanQrCodePopup = ({
         });
   
         if (willChange.isConfirmed) {
+          if (typeof onSelectSubInv !== 'function') {
+            console.error('onSelectSubInv is not a function:', onSelectSubInv);
+            throw new Error('Cannot change subinventory: Invalid callback');
+          }
+
           setIsChangingSubInv(true);
           setPreviousBills(bills);
           setScanningMessage(`กำลังเปลี่ยน Subinventory เป็น ${scannedSubInv}...`);
-          await onSelectSubInv(scannedSubInv);
-          return;
+          
+          try {
+            await onSelectSubInv(scannedSubInv);
+            // ไม่ต้อง return ที่นี่ เพราะเราจะรอให้ effect ทำงาน
+          } catch (error) {
+            console.error('Failed to change subinventory:', error);
+            throw new Error('Failed to change subinventory');
+          }
         }
-      }
-  
-      if (foundBill) {
+      } else if (foundBill) {
         if (navigator.vibrate) navigator.vibrate(200);
         setScanningMessage("พบข้อมูล! กำลังแสดงรายละเอียด...");
         
-        // ทำให้แน่ใจว่า state ถูกอัปเดตตามลำดับ
-        await new Promise(resolve => {
-          setSelectedBill(foundBill);
-          setShowScanner(false);
-          setTimeout(resolve, 100);
-        });
-
+        setSelectedBill(foundBill);
+        setShowScanner(false);
         setShowDetailPopup(true);
       } else {
         await Swal.fire({
@@ -313,10 +311,17 @@ const ScanQrCodePopup = ({
     } catch (error) {
       console.error("Scanning error:", error);
       setScanningMessage(`เกิดข้อผิดพลาด: ${error.message}`);
-      setTimeout(() => setScanningMessage("พร้อมสแกน QR Code"), 2000);
+      await Swal.fire({
+        title: "เกิดข้อผิดพลาด",
+        text: error.message,
+        icon: "error",
+        confirmButtonText: "ตกลง",
+        confirmButtonColor: "#3085d6"
+      });
     } finally {
-      if (!showDetailPopup) {
+      if (!showDetailPopup && !isChangingSubInv) {
         setIsScanning(false);
+        setScanningMessage("พร้อมสแกน QR Code");
       }
     }
   };

@@ -6,7 +6,13 @@ import BillDetailPopup from "../Table/view/BillDetail/BillDetailPopup";
 import { Camera, Loader2 } from "lucide-react";
 import Swal from "sweetalert2";
 
-const ScanQrCodePopup = ({ isOpen, onClose, bills, onSelectSubInv, selectedSubInv }) => {
+const ScanQrCodePopup = ({ 
+  isOpen, 
+  onClose, 
+  bills, 
+  onSelectSubInv,  // รับ prop นี้
+  selectedSubInv,  // รับ prop นี้
+}) => {
   // Camera states
   const [hasPermission, setHasPermission] = useState(false);
   const [permissionError, setPermissionError] = useState(null);

@@ -144,6 +144,8 @@ const BillSearch = ({
           onClose={closeModal}
           onSearch={onSearch}
           bills={bills}
+          onSelectSubInv={onSelectSubInv} // ส่ง prop ต่อไปยัง ScanQrCodePopup
+          selectedSubInv={selectedSubInv} // ส่ง prop ต่อไปยัง ScanQrCodePopup
         />
       )}
 

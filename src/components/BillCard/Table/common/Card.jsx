@@ -1,5 +1,5 @@
 import React from "react";
-import { useIntersectionObserver } from "../../../../hook/useIntersectionObserver";
+import { useIntersectionObserver } from "../../../../hooks/useIntersectionObserver";
 import { PartImage } from "../../../../services/partImageService";
 
 const Card = ({

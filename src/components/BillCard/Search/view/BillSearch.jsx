@@ -1,8 +1,8 @@
-// components/BillCard/Search/view/BillSearch.jsx
+// src/components/BillCard/Search/view/BillSearch.jsx
 import React, { useState, useRef } from "react";
 import { SearchInput, ActionButtons, MobileDropdownMenu } from "../common";
-import { useClickOutside } from "../../../../hook/useClickOutside";
-import ScanQrCodePopup from "../../QRCode/ScanQrCodePopup";
+import { useClickOutside } from "../../../../hooks/useClickOutside";
+import HandheldScanner from "../../QRCode/Scanner/HandheldScanner";
 import QrCodePopup from "../../QRCode/QrCodePopup";
 import QrCodeSelectionPopup from "../../QRCode/QrCodeSelectionPopup";
 import DateFilterPopup from "../view/DateFilterPopup";
@@ -10,15 +10,17 @@ import DateFilterPopup from "../view/DateFilterPopup";
 const BillSearch = ({
   onSearch,
   onExport,
-  bills,
-  inventories, // เพิ่ม prop inventories
+  inventories,
   onFilterChange,
   onSelectSubInv,
+  onSelectItemId,
   selectedSubInv,
+  selectedItemId,
   isFiltered,
   defaultDates,
   filteredBills,
   selectedTableRows,
+  bills
 }) => {
   const [searchTerm, setSearchTerm] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -96,8 +98,10 @@ const BillSearch = ({
                 onGenerateQr={handleOpenQrSelection}
                 onExport={onExport}
                 onSelectSubInv={onSelectSubInv}
+                onSelectItemId={onSelectItemId}
                 selectedSubInv={selectedSubInv}
-                inventories={inventories} // เปลี่ยนจาก bills เป็น inventories
+                selectedItemId={selectedItemId}
+                inventories={inventories}
                 disabled={isGeneratingQr}
               />
             </div>
@@ -127,10 +131,12 @@ const BillSearch = ({
                 onGenerateQr={handleOpenQrSelection}
                 onExport={onExport}
                 onSelectSubInv={onSelectSubInv}
+                onSelectItemId={onSelectItemId}
                 selectedSubInv={selectedSubInv}
+                selectedItemId={selectedItemId}
                 isFiltered={isFiltered}
                 disabled={isGeneratingQr}
-                inventories={inventories} // เปลี่ยนจาก bills เป็น inventories
+                inventories={inventories}
               />
             </div>
           </div>
@@ -139,21 +145,24 @@ const BillSearch = ({
 
       {/* Popups */}
       {isModalOpen && (
-        <ScanQrCodePopup
-          isOpen={isModalOpen}
-          onClose={closeModal}
-          onSearch={onSearch}
-          bills={bills}
-          onSelectSubInv={onSelectSubInv} // ส่ง prop ต่อไปยัง ScanQrCodePopup
-          selectedSubInv={selectedSubInv} // ส่ง prop ต่อไปยัง ScanQrCodePopup
-        />
+ <HandheldScanner
+ isOpen={isModalOpen}
+ onClose={(shouldCloseNav) => {
+   // ถ้า shouldCloseNav เป็น true ให้ปิด Navigation
+   // ถ้า false ให้คงไว้
+   setIsModalOpen(false);
+ }}
+ bills={bills}
+ selectedSubInv={selectedSubInv}
+ onSelectSubInv={onSelectSubInv}
+/>
       )}
 
       {showQrSelectionPopup && (
         <QrCodeSelectionPopup
           isOpen={showQrSelectionPopup}
           onClose={handleCloseQrSelection}
-          bills={filteredBills || bills}
+          bills={filteredBills}
           onGenerate={handleGenerateQr}
           selectedTableRows={selectedTableRows}
         />
@@ -165,11 +174,11 @@ const BillSearch = ({
 
       {isDateFilterPopupOpen && (
         <DateFilterPopup
-        isOpen={isDateFilterPopupOpen}
-        onClose={handleCloseDateFilterPopup}
-        onApply={handleApplyDateFilter}
-        defaultDates={defaultDates}
-    />    
+          isOpen={isDateFilterPopupOpen}
+          onClose={handleCloseDateFilterPopup}
+          onApply={handleApplyDateFilter}
+          defaultDates={defaultDates}
+        />
       )}
     </div>
   );

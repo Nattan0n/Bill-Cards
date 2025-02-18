@@ -2,7 +2,8 @@
 import axios from 'axios';
 
 export const oracleApi = axios.create({
-    baseURL: 'http://129.200.6.52/laravel_oracle11g_prod_api/public',
+    // baseURL: 'http://129.200.6.52/laravel_oracle11g_prod_api/public',
+    baseURL: 'http://129.200.6.52/laravel_oracle_api/public',
     headers: {
         'Content-Type': 'application/json',
         'Accept': 'application/json',

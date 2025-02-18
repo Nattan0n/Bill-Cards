@@ -1,33 +1,14 @@
-import React, { useState, useMemo } from "react";
+// components/BillCard/BillDetail/InventoryTable.jsx
+import React from "react";
 import { formatDate, parseDate } from "../../../../../utils/dateUtils";
 
-// Helper function สำหรับ format ตัวเลข
-const formatNumber = (number) => {
-  // ถ้าเป็น null หรือ undefined ให้แสดงเป็น "-"
-  if (number == null) return "-";
-  
-  // แปลงเป็นตัวเลข
-  const num = Number(number);
-  
-  // ถ้าเป็น 0 ให้แสดงเป็น "-"
-  if (num === 0) return "-";
-  
-  // ถ้าเป็นจำนวนเต็ม ให้แสดงแค่จำนวนเต็ม
-  if (Number.isInteger(num)) {
-    return num.toString();
-  }
-  
-  // ถ้ามีทศนิยม ให้แสดง 2 ตำแหน่ง
-  return num.toFixed(2).replace(/\.?0+$/, '');
-};
-
-// Helper function สำหรับ format วันที่
 const formatInventoryDate = (dateTimeStr) => {
   try {
     if (!dateTimeStr) return "-";
     const parsedDate = parseDate(dateTimeStr);
     if (!parsedDate) return "-";
     
+    // ใช้ Intl.DateTimeFormat สำหรับ format วันที่แบบไทย
     return new Intl.DateTimeFormat('th-TH', {
       year: 'numeric',
       month: '2-digit',
@@ -43,30 +24,6 @@ const formatInventoryDate = (dateTimeStr) => {
 };
 
 export const InventoryTable = ({ inventory }) => {
-  // Add sort state
-  const [sortDirection, setSortDirection] = useState('desc'); // 'asc' or 'desc'
-
-  // Sort inventory data
-  const sortedInventory = useMemo(() => {
-    if (!inventory?.length) return [];
-    
-    return [...inventory].sort((a, b) => {
-      const dateA = parseDate(a.date_time);
-      const dateB = parseDate(b.date_time);
-      
-      if (!dateA || !dateB) return 0;
-      
-      return sortDirection === 'asc' 
-        ? dateA.getTime() - dateB.getTime()
-        : dateB.getTime() - dateA.getTime();
-    });
-  }, [inventory, sortDirection]);
-
-  // Toggle sort direction
-  const handleSortClick = () => {
-    setSortDirection(current => current === 'asc' ? 'desc' : 'asc');
-  };
-
   return (
     <div className="bg-white rounded-2xl shadow-sm">
       {/* Header */}
@@ -90,18 +47,10 @@ export const InventoryTable = ({ inventory }) => {
           <thead className="bg-white sticky top-0 z-10">
             <tr className="border-b">
               <th className="p-3 text-left">
-                <span className="text-sm text-gray-600">No.</span>
+                <span className="text-sm text-gray-600">เลขที่</span>
               </th>
-              <th className="p-3 text-left min-w-[140px]">
-                <button 
-                  onClick={handleSortClick}
-                  className="w-full flex items-center justify-between group hover:bg-gray-50 px-2 py-1 rounded-lg transition-colors"
-                >
-                  <span className="text-sm text-gray-600">วันที่</span>
-                  <span className="material-symbols-outlined text-gray-400 text-xl group-hover:text-blue-500">
-                    {sortDirection === 'asc' ? 'stat_1' : 'stat_minus_1'}
-                  </span>
-                </button>
+              <th className="p-3 text-left">
+                <span className="text-sm text-gray-600">วันที่</span>
               </th>
               <th className="p-3 text-center">
                 <span className="text-sm text-gray-600">จำนวนรับ</span>
@@ -110,10 +59,10 @@ export const InventoryTable = ({ inventory }) => {
                 <span className="text-sm text-gray-600">จำนวนจ่าย</span>
               </th>
               <th className="p-3 text-left">
-                <span className="text-sm text-gray-600">คงเหลือ</span>
+                <span className="text-sm text-gray-600">เอกสารเลขที่</span>
               </th>
               <th className="p-3 text-left">
-                <span className="text-sm text-gray-600">เอกสารเลขที่</span>
+                <span className="text-sm text-gray-600">คงเหลือ</span>
               </th>
               <th className="p-3 text-left">
                 <span className="text-sm text-gray-600">ผู้บันทึก</span>
@@ -121,9 +70,9 @@ export const InventoryTable = ({ inventory }) => {
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
-            {sortedInventory.length > 0 ? (
-              sortedInventory.map((item) => (
-                <tr key={`${item.id}-${item.sequence_number}`} className="hover:bg-indigo-50/80">
+            {inventory.length > 0 ? (
+              inventory.map((item) => (
+                <tr key={item.sequence_number} className="hover:bg-gray-50/50">
                   <td className="p-3">
                     <span className="text-sm text-gray-600">{item.sequence_number}</span>
                   </td>
@@ -136,36 +85,28 @@ export const InventoryTable = ({ inventory }) => {
                     </div>
                   </td>
                   <td className="p-3 text-center">
-                    {Number(item.quantity_sold) > 0 ? (
+                    {item.quantity_sold > 0 ? (
                       <span className="inline-flex items-center px-2.5 py-1 rounded-lg bg-green-50 text-xs font-medium text-green-700">
                         <span className="material-symbols-outlined text-sm mr-1">
                           add_circle
                         </span>
-                        {formatNumber(item.quantity_sold)}
+                        {item.quantity_sold}
                       </span>
                     ) : (
                       <span className="text-sm text-gray-400">-</span>
                     )}
                   </td>
                   <td className="p-3 text-center">
-                    {Number(item.quantity_sold) < 0 ? (
+                    {item.quantity_sold < 0 ? (
                       <span className="inline-flex items-center px-2.5 py-1 rounded-lg bg-red-50 text-xs font-medium text-red-700">
                         <span className="material-symbols-outlined text-sm mr-1">
                           remove_circle
                         </span>
-                        {formatNumber(Math.abs(item.quantity_sold))}
+                        {Math.abs(item.quantity_sold)}
                       </span>
                     ) : (
                       <span className="text-sm text-gray-400">-</span>
                     )}
-                  </td>
-                  <td className="p-3">
-                    <div className="inline-flex items-center px-2.5 py-1 rounded-lg bg-blue-50 text-xs font-medium">
-                      <span className="material-symbols-outlined mr-1 text-blue-500 text-base">
-                        inventory_2
-                      </span>
-                      <span className="text-blue-600">{formatNumber(item.quantity_remaining)}</span>
-                    </div>
                   </td>
                   <td className="p-3">
                     <div className="inline-flex items-center px-2.5 py-1 rounded-lg bg-indigo-50 text-xs font-medium text-indigo-700">
@@ -176,7 +117,15 @@ export const InventoryTable = ({ inventory }) => {
                     </div>
                   </td>
                   <td className="p-3">
-                    <div className="inline-flex items-center px-2.5 py-1 rounded-lg bg-yellow-50 text-xs font-medium text-yellow-600">
+                    <div className="inline-flex items-center px-2.5 py-1 rounded-lg bg-gray-50 text-xs font-medium text-gray-600">
+                      <span className="material-symbols-outlined text-sm mr-1">
+                        inventory_2
+                      </span>
+                      <span>{item.quantity_remaining}</span>
+                    </div>
+                  </td>
+                  <td className="p-3">
+                    <div className="inline-flex items-center px-2.5 py-1 rounded-lg bg-gray-50 text-xs font-medium text-gray-600">
                       <span className="material-symbols-outlined text-sm mr-1">
                         person
                       </span>

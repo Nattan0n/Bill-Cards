@@ -132,26 +132,19 @@ export const exportPartListToExcel = async (bills) => {
 
     // กำหนดคอลัมน์
     worksheet.columns = [
-      { header: "ลำดับ", key: "no", width: 10 },
-      { header: "รหัสสินค้า", key: "partNumber", width: 15 },
-      { header: "รายละเอียดสินค้า", key: "partDescription", width: 30 },
-      { header: "ลูกค้า", key: "customer", width: 15 },
-      { header: "วันที่", key: "date", width: 15 },
-      { header: "จำนวนคงเหลือ", key: "quantity", width: 15 },
-      { header: "เลขที่งาน", key: "jobNumber", width: 15 }
+      { header: "NO.", key: "no", width: 10 },
+      { header: "Part No.", key: "partNumber", width: 15 },
+      { header: "Part Name", key: "partDescription", width: 30 },
+      { header: "SubInventory", key: "subinvean", width: 15 },
     ];
 
     // เพิ่มข้อมูล
     bills.forEach((bill, index) => {
-      const currentDate = new Date().toISOString().split('T')[0];
       worksheet.addRow({
         no: index + 1,
         partNumber: bill.M_PART_NUMBER || '-',
         partDescription: bill.M_PART_DESCRIPTION || '-',
-        customer: bill.M_SUBINV || '-',
-        date: formatDateSafe(bill.M_DATE) || currentDate,
-        quantity: bill.totalQty || bill.M_QTY_RM || 0,
-        jobNumber: bill.M_SOURCE_NAME || '-'
+        subinvean: bill.M_SUBINV || '-',
       });
     });
 

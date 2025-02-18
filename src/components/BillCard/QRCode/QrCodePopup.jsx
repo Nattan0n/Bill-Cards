@@ -274,7 +274,7 @@ const QrCodePopup = ({ bills, onClose }) => {
                       </div>
 
                       <div className="grid grid-cols-2 gap-3">
-                        <div className="bg-blue-50 p-3 rounded-xl">
+                        {/* <div className="bg-blue-50 p-3 rounded-xl">
                           <div className="flex items-center justify-center gap-2">
                             <span className="material-symbols-outlined text-blue-600">
                               inventory
@@ -294,7 +294,7 @@ const QrCodePopup = ({ bills, onClose }) => {
                               {bill.totalQty}
                             </span>
                           </div>
-                        </div>
+                        </div> */}
                         <div className="bg-gray-50 p-3 rounded-xl">
                           <div className="text-center font-medium text-gray-700">
                             {bill.M_SUBINV}
@@ -415,24 +415,24 @@ const QrCodePopup = ({ bills, onClose }) => {
                       </div>
 
                       <div className="grid grid-cols-2 gap-3">
-                        <div className="bg-blue-50 p-3 rounded-xl">
+                        {/* <div className="bg-blue-50 p-3 rounded-xl">
                           <div className="flex items-center justify-center gap-2">
                             <span className="material-symbols-outlined text-blue-600">
                               inventory
                             </span>
                             <span
                               className={`font-medium ${
-                                Number(bill.M_QTY) > 0
+                                Number(bill.totalQty) > 0
                                   ? "text-green-600"
                                   : "text-red-600"
                               }`}
                             >
-                              {Number(bill.M_QTY) > 0
-                                ? `+${Math.abs(Number(bill.M_QTY))}`
-                                : `-${Math.abs(Number(bill.M_QTY))}`}
+                              {Number(bill.totalQty) > 0
+                                ? `+${Math.abs(Number(bill.totalQty))}`
+                                : `${Math.abs(Number(bill.totalQty))}`}
                             </span>
                           </div>
-                        </div>
+                        </div> */}
                         <div className="bg-gray-50 p-3 rounded-xl">
                           <div className="text-center font-medium text-gray-700">
                             {bill.M_SUBINV}

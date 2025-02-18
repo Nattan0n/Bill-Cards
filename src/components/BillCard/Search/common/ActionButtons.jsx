@@ -9,8 +9,10 @@ export const ActionButtons = ({
   onGenerateQr,
   onExport,
   onSelectSubInv,
+  onSelectItemId, // เพิ่ม prop นี้
   selectedSubInv,
-  inventories = [], // เปลี่ยนจาก bills เป็น inventories
+  selectedItemId, // เพิ่ม prop นี้
+  inventories = [],
   disabled = false
 }) => {
   return (
@@ -18,12 +20,14 @@ export const ActionButtons = ({
       {/* SubInventory Dropdown */}
       <SubInventoryDropdown
         onSelectSubInv={onSelectSubInv}
+        onSelectItemId={onSelectItemId} // ส่ง prop ไปให้ SubInventoryDropdown
         selectedSubInv={selectedSubInv}
-        inventories={inventories} // ส่ง inventories แทน bills
+        selectedItemId={selectedItemId} // ส่ง prop ไปให้ SubInventoryDropdown
+        inventories={inventories}
       />
 
       {/* Date Filter Button */}
-      <IconButton
+      {/* <IconButton
         icon="filter_alt"
         label="Date Filter"
         onClick={onFilter}
@@ -33,7 +37,7 @@ export const ActionButtons = ({
         } rounded-xl border border-blue-100 shadow-sm hover:bg-blue-50 transition-all duration-200`}
         tooltipText="Filter data by selecting a specific date range"
         disabled={disabled}
-      />
+      /> */}
 
       {/* Generate QR Button */}
       <IconButton

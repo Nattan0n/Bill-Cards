@@ -1,4 +1,4 @@
-// components/BillCard/SearchComponents/SearchInput.jsx
+// src/components/BillCard/Search/common/SearchInput.jsx
 import React from "react";
 import { IconButton } from "./IconButton";
 
@@ -8,10 +8,8 @@ export const SearchInput = ({ value, onChange, onScan, isMobile = false }) => {
   }`;
 
   return (
-    <div
-      className={`relative flex items-center ${isMobile ? "w-full" : "w-96"}`}
-    >
-      {/* Search Icon */}
+    <div className={`relative flex items-center ${isMobile ? "w-full" : "w-96"}`}>
+      {/* ไอคอนค้นหา */}
       <div className="absolute left-3 text-blue-600">
         <svg
           className={searchIconClasses}
@@ -30,29 +28,29 @@ export const SearchInput = ({ value, onChange, onScan, isMobile = false }) => {
         </svg>
       </div>
 
-      {/* Search Input */}
+      {/* ช่องค้นหา */}
       <input
         type="text"
         value={value}
         onChange={onChange}
         placeholder={
-          isMobile ? "Search bills..." : "Search bills by Part NO. or Part Name"
+          isMobile ? "Search Part by Part NO. or Part Name" : "Search Part by Part NO. or Part Name"
         }
         className="w-full pl-10 pr-12 py-3 text-sm bg-white rounded-xl border border-gray-200/75 
-  shadow-sm hover:border-blue-300 focus:border-blue-400 focus:ring-4 focus:ring-blue-100
-  outline-none transition-all duration-200"
+          shadow-sm hover:border-blue-300 focus:border-blue-400 focus:ring-4 focus:ring-blue-100
+          outline-none transition-all duration-200"
       />
 
-      {/* QR Scanner Button */}
+      {/* ปุ่มสแกน QR */}
       <div className="absolute right-0">
         <IconButton
           icon="qr_code_scanner"
-          tooltipTitle="QR Scanner"
+          tooltipTitle="สแกน QR Code"
           hideLabel={true}
           onClick={onScan}
           iconColor="text-blue-600"
           className="h-full px-3 flex items-center justify-center hover:text-blue-700 transition-colors rounded-r-xl"
-          tooltipText="Scan QR code to search for specific items quickly"
+          tooltipText="สแกน QR Code ด้วยเครื่องสแกนมือถือเพื่อค้นหาข้อมูล Bill Card"
         />
       </div>
     </div>

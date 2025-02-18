@@ -35,13 +35,14 @@ export const exportToExcel = async (
     ]);
     worksheet.addRow([]); // Empty row for spacing
 
-    // Define columns - เปลี่ยนจาก ID เป็น No.
+    // Define columns with separate Quantity In and Quantity Out
     const headers = [
       { header: "No.", key: "no", width: 10 },
       { header: "Date", key: "date", width: 20 },
-      { header: "Quantity In/Out", key: "quantity", width: 15 },
-      { header: "Plan ID", key: "planId", width: 15 },
+      { header: "Quantity In (+)", key: "quantityIn", width: 15 },
+      { header: "Quantity Out (-)", key: "quantityOut", width: 15 },
       { header: "Remaining", key: "remaining", width: 15 },
+      { header: "Document number", key: "eDocumentNo", width: 17 },
       { header: "User", key: "user", width: 20 },
     ];
 
@@ -65,16 +66,28 @@ export const exportToExcel = async (
       cell.alignment = { vertical: "middle", horizontal: "center" };
     });
 
-    // Add data rows - เพิ่ม index + 1 เป็นลำดับที่
+    // Add data rows
     inventoryWithRemaining.forEach((item, index) => {
+      const quantityIn = item.quantity_sold > 0 ? `+${Math.abs(item.quantity_sold)}` : "";
+      const quantityOut = item.quantity_sold < 0 ? `-${Math.abs(item.quantity_sold)}` : "";
+
       const row = worksheet.addRow([
-        index + 1, // ใช้ index + 1 แทน item.id
+        index + 1,
         item.date_time,
-        item.quantity_sold,
-        item.source_name,
+        quantityIn,
+        quantityOut,
         item.quantity_remaining,
+        item.eDocumentNo,
         item.username,
       ]);
+
+      // Conditional coloring
+      if (item.quantity_sold > 0) {
+        row.getCell(3).font = { color: { argb: 'FF008000' } }; // Green for Quantity In
+      }
+      if (item.quantity_sold < 0) {
+        row.getCell(4).font = { color: { argb: 'FFFF0000' } }; // Red for Quantity Out
+      }
 
       // Style data cells
       row.eachCell((cell) => {

@@ -1,15 +1,14 @@
 // BillCard.jsx
 import React, { useState, useCallback, useMemo, useEffect } from "react";
-import { BlinkBlur } from "react-loading-indicators";
 import debounce from "lodash/debounce";
 import BillSearch from "./Search/view/BillSearch";
 import BillTable from "./Table/view/BillTable";
 import Pagination from "../Pagination/Pagination";
 import { parseDate } from "../../utils/dateUtils";
 import { exportPartListToExcel } from "../../utils/exportUtils";
-import { useBillFilter } from "../../hook/useBillFilter";
+import { useBillFilter } from "../../hooks/useBillFilter";
+import { useBillDataAPI } from "../../hooks/useBillDataAPI";
 import { inventoryService } from "../../services/inventoryService";
-import { billCardService } from "../../services/billCardService";
 
 const BillCard = () => {
   // States
@@ -19,92 +18,78 @@ const BillCard = () => {
   const [dateFilter, setDateFilter] = useState(null);
   const [selectedTableRows, setSelectedTableRows] = useState([]);
   const [selectedSubInv, setSelectedSubInv] = useState("GP-DAIK");
-  const [inventories, setInventories] = useState([]);
-  const [bills, setBills] = useState([]);
-  const [isLoadingInventories, setIsLoadingInventories] = useState(true);
-  const [isLoadingBills, setIsLoadingBills] = useState(true);
+  const [groupedInventories, setGroupedInventories] = useState([]);
+  const [isLoadingGrouped, setIsLoadingGrouped] = useState(true);
   const [error, setError] = useState(null);
+  const [isTableLoading, setIsTableLoading] = useState(false);
   const itemsPerPage = 8;
 
-  // Load inventories data
+  // Fetch Bills using custom hook
+  const { 
+    bills, 
+    loading: isLoadingBills, 
+    error: billError, 
+    refreshBills,
+    setSubInventory,
+    selectedItemId,
+    setSelectedItemId
+  } = useBillDataAPI("GP-DAIK");
+
+  // Load grouped inventories
   useEffect(() => {
-    const controller = new AbortController();
-    
-    const loadInventories = async () => {
+    const loadGroupedInventories = async () => {
       try {
-        setIsLoadingInventories(true);
+        setIsLoadingGrouped(true);
         setError(null);
-        const invData = await inventoryService.getInventories({ signal: controller.signal });
-        if (!controller.signal.aborted) {
-          setInventories(invData);
-          if (!selectedSubInv && invData.some((inv) => inv.name === "GP-DAIK")) {
+        const data = await inventoryService.fetchInventories();
+        setGroupedInventories(data);
+
+        if (!selectedSubInv) {
+          const defaultGroup = data.find(group => group.secondary_inventory === "GP-DAIK");
+          if (defaultGroup) {
             setSelectedSubInv("GP-DAIK");
           }
         }
       } catch (error) {
-        if (!controller.signal.aborted) {
-          console.error("Failed to load inventories:", error);
-          setError("Failed to load inventories");
-        }
+        console.error("Failed to load grouped inventories:", error);
+        setError("Failed to load grouped inventories");
       } finally {
-        if (!controller.signal.aborted) {
-          setIsLoadingInventories(false);
-        }
+        setIsLoadingGrouped(false);
       }
     };
 
-    loadInventories();
-
-    return () => controller.abort();
+    loadGroupedInventories();
   }, []);
 
-  // Load bills data
-  useEffect(() => {
-    const controller = new AbortController();
-    
-    const loadBills = async () => {
-      try {
-        setIsLoadingBills(true);
-        setError(null);
-        const data = await billCardService.getBillCards(selectedSubInv, null, { signal: controller.signal });
-        if (!controller.signal.aborted) {
-          setBills(data);
-        }
-      } catch (error) {
-        if (!controller.signal.aborted) {
-          console.error("Failed to load bills:", error);
-          setError("Failed to load bills");
-        }
-      } finally {
-        if (!controller.signal.aborted) {
-          setIsLoadingBills(false);
-        }
-      }
-    };
-
-    loadBills();
-
-    // Auto refresh every 5 minutes if tab is visible
-    const intervalId = setInterval(() => {
-      if (document.visibilityState === 'visible') {
-        loadBills();
-      }
-    }, 300000);
-
-    return () => {
-      controller.abort();
-      clearInterval(intervalId);
-    };
-  }, [selectedSubInv]);
-
   // Optimized callbacks
-  const handleSubInvChange = useCallback((subInv) => {
-    billCardService.clearCache(selectedSubInv);
-    setSelectedSubInv(subInv);
-    setCurrentPage(1);
-    setSelectedBills([]);
-    setSelectedTableRows([]);
-  }, [selectedSubInv]);
+  const handleSubInvChange = useCallback(async (subInv) => {
+    if (subInv !== selectedSubInv) {
+      setIsTableLoading(true);
+      try {
+        inventoryService.clearCache();
+        setSelectedSubInv(subInv);
+        await setSubInventory(subInv);
+        setCurrentPage(1);
+        setSelectedBills([]);
+        setSelectedTableRows([]);
+        setError(null);
+      } finally {
+        // Add small delay to ensure loading animation is visible
+        setTimeout(() => {
+          setIsTableLoading(false);
+        }, 800);
+      }
+    }
+  }, [selectedSubInv, setSubInventory]);
+
+  const handleItemIdChange = useCallback((itemId) => {
+    if (itemId !== selectedItemId) {
+      setSelectedItemId(itemId);
+      setCurrentPage(1);
+      setSelectedBills([]);
+      setSelectedTableRows([]);
+    }
+  }, [selectedItemId, setSelectedItemId]);
 
   const handleFilterChange = useCallback((dateRange) => {
     setDateFilter(dateRange);
@@ -119,13 +104,12 @@ const BillCard = () => {
   }, []);
 
   const debouncedSearch = useMemo(
-    () =>
-      debounce((searchTerm) => {
-        setSearch(searchTerm);
-        setCurrentPage(1);
-        setSelectedBills([]);
-        setSelectedTableRows([]);
-      }, 300),
+    () => debounce((searchTerm) => {
+      setSearch(searchTerm);
+      setCurrentPage(1);
+      setSelectedBills([]);
+      setSelectedTableRows([]);
+    }, 300),
     []
   );
 
@@ -180,7 +164,7 @@ const BillCard = () => {
           date: parseDate(item.M_DATE),
           qty: Number(item.M_QTY || 0)
         }))
-        .filter(item => item.date)
+        .filter(item => item.date && !isNaN(item.date.getTime()))
         .sort((a, b) => {
           const timeA = a.date.getTime();
           const timeB = b.date.getTime();
@@ -245,11 +229,14 @@ const BillCard = () => {
   );
 
   // Loading state
-  if (isLoadingInventories || isLoadingBills) {
+  if (isLoadingGrouped || (isLoadingBills && selectedItemId)) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-white">
         <div className="flex flex-col items-center space-y-4">
-          <BlinkBlur color="#dd1414" size="small" text="" textColor="" />
+          <div className="relative">
+            <div className="w-12 h-12 rounded-full border-4 border-blue-200 animate-spin"></div>
+            <div className="absolute top-0 left-0 w-12 h-12 rounded-full border-t-4 border-blue-600 animate-spin"></div>
+          </div>
           <p className="text-gray-600">Loading data...</p>
         </div>
       </div>
@@ -257,29 +244,31 @@ const BillCard = () => {
   }
 
   // Error state
-  if (error) {
+  if (error || billError) {
     return (
-      <div className="min-h-screen bg-white">
-        <div className="max-w-8xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="min-h-screen bg-white p-4">
+        <div className="max-w-4xl mx-auto">
           <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-            <div className="flex">
+            <div className="flex items-start">
               <div className="flex-shrink-0">
                 <span className="material-symbols-outlined text-red-400">error</span>
               </div>
               <div className="ml-3">
                 <h3 className="text-sm font-medium text-red-800">Error loading data</h3>
                 <div className="mt-2 text-sm text-red-700">
-                  <p>{error}</p>
+                  <p>{!selectedItemId ? "Please select an Item ID" : (error || billError)}</p>
                 </div>
-                <div className="mt-4">
-                  <button
-                    type="button"
-                    onClick={() => window.location.reload()}
-                    className="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-red-700 bg-red-100 hover:bg-red-200"
-                  >
-                    Retry
-                  </button>
-                </div>
+                {!selectedItemId && (
+                  <div className="mt-4">
+                    <p className="text-sm text-gray-600 mb-2">
+                      To view bill cards, please:
+                    </p>
+                    <ol className="list-decimal list-inside text-sm text-gray-600">
+                      <li>Select a SubInventory</li>
+                      <li>Select a specific Item ID</li>
+                    </ol>
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -289,20 +278,25 @@ const BillCard = () => {
   }
 
   return (
-<div className="min-h-screen">
+    <div className="min-h-screen">
       <div className="max-w-8xl mx-auto sm:px-6 lg:px-8 md:py-6 overflow-y-auto h-screen">
         <div className="bg-white shadow-sm rounded-3xl mb-20">
-          <div className=" lg:p-6 text-gray-900">
+          <div className="lg:p-6 text-gray-900">
             {/* Search Section */}
             <div className="sticky top-0 z-10">
               <BillSearch
                 onSearch={handleSearch}
                 onExport={exportToExcel}
-                bills={bills}
-                inventories={inventories}
+                inventories={groupedInventories.map(group => ({
+                  name: group.secondary_inventory,
+                  description: group.description,
+                  inventory_items: group.inventory_items
+                }))}
                 onFilterChange={handleFilterChange}
                 onSelectSubInv={handleSubInvChange}
+                onSelectItemId={handleItemIdChange}
                 selectedSubInv={selectedSubInv}
+                selectedItemId={selectedItemId}
                 isFiltered={!!dateFilter}
                 defaultDates={dateFilter}
                 filteredBills={groupedBills}
@@ -316,8 +310,9 @@ const BillCard = () => {
                 bills={currentBills}
                 startingIndex={indexOfFirstBill}
                 onSelectedRowsChange={handleSelectedRowsChange}
-                key={`${currentPage}-${dateFilter?.startDate}-${dateFilter?.endDate}-${selectedSubInv}-${search}`}
+                key={`${currentPage}-${dateFilter?.startDate}-${dateFilter?.endDate}-${selectedSubInv}-${selectedItemId}-${search}`}
                 allBills={bills}
+                isLoading={isTableLoading}
               />
             </div>
 

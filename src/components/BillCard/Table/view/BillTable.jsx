@@ -2,6 +2,7 @@
 import React, { useState, useCallback, useMemo } from "react";
 import BillDetailPopup from "./BillDetail/BillDetailPopup";
 import Card from "../common/Card";
+import TableLoadingAnimation from "./TableLoadingAnimation";
 import { PartImage } from "../../../../services/partImageService";
 
 // Row component for better performance
@@ -10,7 +11,8 @@ const TableRow = React.memo(({
   index, 
   startingIndex, 
   selectedRows, 
-  handleSelectRow, 
+  handleSelectRow,
+  isLoading, 
   handleShowPopup 
 }) => (
   <tr className="group hover:bg-blue-50/50 transition-colors duration-200">
@@ -42,40 +44,40 @@ const TableRow = React.memo(({
         </div>
       </div>
     </td>
-    <td className="p-4 text-sm font-medium text-gray-900">
+    <td className="p-4 text-base font-medium text-gray-900">
       {startingIndex + index + 1}
     </td>
     <td className="p-4">
-      <div className="w-20 h-20 rounded-xl overflow-hidden bg-gray-100 border border-gray-100 group-hover:border-blue-100 transition-all duration-300 shadow-sm">
+      <div className="w-28 h-28 rounded-xl overflow-hidden bg-gray-100 border border-gray-100 group-hover:border-blue-100 transition-all duration-300 shadow-sm">
         <PartImage
           partNumber={bill.M_PART_NUMBER}
           partName={bill.M_PART_DESCRIPTION}
-          width="w-20"
-          height="h-20"
+          width="w-28"
+          height="h-28"
           className="object-cover transform transition-transform duration-300 group-hover:scale-105"
           showError={false}
         />
       </div>
     </td>
-    <td className="p-4 text-sm font-medium text-gray-900 group-hover:text-blue-600">
+    <td className="p-4 text-base font-medium text-gray-900 group-hover:text-blue-600">
       {bill.M_PART_NUMBER}
     </td>
-    <td className="p-4 text-sm text-gray-600 max-w-xs">
+    <td className="p-4 text-base text-gray-600 max-w-xs">
       <p className="line-clamp-2">{bill.M_PART_DESCRIPTION}</p>
     </td>
     <td className="p-4">
-      <span className="inline-flex items-center px-2.5 py-1 rounded-lg bg-gray-50 text-xs font-medium text-gray-600">
+      <span className="inline-flex items-center px-2.5 py-1 rounded-lg bg-orange-50 text-base font-medium text-orange-600">
         {bill.M_SUBINV}
       </span>
     </td>
-    <td className="p-4">
+    {/* <td className="p-4">
       <span className="inline-flex items-center px-2.5 py-1 rounded-lg bg-indigo-50 text-xs font-medium text-indigo-700">
         {bill.TRANSACTION_TYPE_NAME}
       </span>
     </td>
     <td className="p-4">
       <span className="inline-flex items-center px-2.5 py-1 rounded-lg bg-blue-50 text-xs font-medium text-blue-700">
-        <span className="material-symbols-outlined text-sm mr-1">calendar_today</span>
+        <span className="material-symbols-outlined text-base mr-1">calendar_today</span>
         {bill.M_DATE}
       </span>
     </td>
@@ -83,25 +85,25 @@ const TableRow = React.memo(({
       <span className={`inline-flex items-center px-2.5 py-1 rounded-lg ${
         bill.totalQty > 0 ? "bg-green-50 text-green-700" : "bg-red-50 text-red-700"
       } text-xs font-medium`}>
-       <span className="material-symbols-outlined text-sm mr-1">
+       <span className="material-symbols-outlined text-base mr-1">
           {bill.totalQty > 0 ? "add_circle" : "remove_circle"}
         </span>
         {bill.totalQty}
       </span>
-    </td>
+    </td> */}
     <td className="p-4">
       <button
         onClick={() => handleShowPopup(bill)}
-        className="inline-flex items-center px-3 py-1.5 bg-gradient-to-r from-indigo-600 via-blue-600 to-blue-700 text-white hover:from-blue-700 hover:via-blue-600 hover:to-indigo-700 text-xs font-medium rounded-lg transition-all duration-300 shadow-sm hover:shadow group-hover:scale-105"
+        className="inline-flex items-center px-3 py-1.5 bg-gradient-to-r from-indigo-600 via-blue-600 to-blue-700 text-white hover:from-blue-700 hover:via-blue-600 hover:to-indigo-700 text-base font-medium rounded-lg transition-all duration-300 shadow-sm hover:shadow group-hover:scale-105"
       >
-        <span className="material-symbols-outlined text-sm mr-1">visibility</span>
+        <span className="material-symbols-outlined text-base mr-1">visibility</span>
         Details
       </button>
     </td>
   </tr>
 ));
 
-const BillTable = ({ bills, startingIndex = 0, onSelectedRowsChange }) => {
+const BillTable = ({ bills, startingIndex = 0, onSelectedRowsChange,isLoading = false }) => {
   const [selectedBill, setSelectedBill] = useState(null);
   const [showPopup, setShowPopup] = useState(false);
   const [selectedRows, setSelectedRows] = useState([]);
@@ -192,6 +194,12 @@ const BillTable = ({ bills, startingIndex = 0, onSelectedRowsChange }) => {
     </div>
   ), [selectedRows.length, bills.length]);
 
+
+    // Show loading animation when loading
+    if (isLoading) {
+      return <TableLoadingAnimation />;
+    }
+
   return (
     <div className="w-full">
       {/* Common Header */}
@@ -218,7 +226,7 @@ const BillTable = ({ bills, startingIndex = 0, onSelectedRowsChange }) => {
           <div className="p-4 flex items-center justify-between">
             <div className="flex items-center space-x-3">
               <SelectionControls />
-              <span className="text-sm text-gray-600">Select All</span>
+              <span className="text-base text-gray-600">Select All</span>
             </div>
           </div>
         </div>
@@ -235,15 +243,15 @@ const BillTable = ({ bills, startingIndex = 0, onSelectedRowsChange }) => {
                       <th className="p-4 w-[50px]">
                         <SelectionControls />
                       </th>
-                      <th className="p-4 text-xs font-semibold text-left text-gray-600 uppercase">No.</th>
-                      <th className="p-4 text-xs font-semibold text-left text-gray-600 uppercase">Image</th>
-                      <th className="p-4 text-xs font-semibold text-left text-gray-600 uppercase">Part No.</th>
-                      <th className="p-4 text-xs font-semibold text-left text-gray-600 uppercase">Part Name</th>
-                      <th className="p-4 text-xs font-semibold text-left text-gray-600 uppercase">SubInventory</th>
-                      <th className="p-4 text-xs font-semibold text-left text-gray-600 uppercase">Transaction Type</th>
-                      <th className="p-4 text-xs font-semibold text-left text-gray-600 uppercase">Date</th>
-                      <th className="p-4 text-xs font-semibold text-left text-gray-600 uppercase">Quantity</th>
-                      <th className="p-4 text-xs font-semibold text-left text-gray-600 uppercase">Actions</th>
+                      <th className="p-4 text-sm font-semibold text-left text-gray-600 uppercase">No.</th>
+                      <th className="p-4 text-sm font-semibold text-left text-gray-600 uppercase">Image</th>
+                      <th className="p-4 text-sm font-semibold text-left text-gray-600 uppercase">Part No.</th>
+                      <th className="p-4 text-sm font-semibold text-left text-gray-600 uppercase">Part Name</th>
+                      <th className="p-4 text-sm font-semibold text-left text-gray-600 uppercase">SubInventory</th>
+                      {/* <th className="p-4 text-sm font-semibold text-left text-gray-600 uppercase">Transaction Type</th>
+                      <th className="p-4 text-sm font-semibold text-left text-gray-600 uppercase">Date</th>
+                      <th className="p-4 text-sm font-semibold text-left text-gray-600 uppercase">Quantity</th> */}
+                      <th className="p-4 text-sm font-semibold text-left text-gray-600 uppercase">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -288,7 +296,7 @@ const BillTable = ({ bills, startingIndex = 0, onSelectedRowsChange }) => {
                 <p className="text-gray-500 font-medium mb-1">
                   No inventory items found
                 </p>
-                <p className="text-gray-400 text-sm">
+                <p className="text-gray-400 text-base">
                   Try adjusting your search criteria
                 </p>
               </div>

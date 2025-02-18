@@ -13,7 +13,7 @@ export const ActionButtons = ({
   selectedSubInv,
   selectedItemId, // เพิ่ม prop นี้
   inventories = [],
-  disabled = false
+  disabled = false,
 }) => {
   return (
     <div className="flex items-center gap-3">

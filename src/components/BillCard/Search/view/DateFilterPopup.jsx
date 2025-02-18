@@ -34,7 +34,7 @@ const DateFilterPopup = ({ isOpen, onClose, onApply, defaultDates }) => {
     setTimeout(() => {
       onClose();
       setIsClosing(false);
-    }, 500);  // ให้เวลาในการเล่น animation ก่อนที่จะปิด
+    }, 500); // ให้เวลาในการเล่น animation ก่อนที่จะปิด
   };
 
   if (!isOpen && !isClosing) return null;
@@ -62,7 +62,10 @@ const DateFilterPopup = ({ isOpen, onClose, onApply, defaultDates }) => {
               {/* Header */}
               <div className="bg-gradient-to-r from-indigo-600 to-blue-800 px-6 py-4 flex justify-between items-center">
                 <h2 className="text-xl font-semibold text-white flex items-center">
-                  <span className="material-symbols-outlined mr-2"> filter_alt </span>
+                  <span className="material-symbols-outlined mr-2">
+                    {" "}
+                    filter_alt{" "}
+                  </span>
                   Filter by Date Range
                 </h2>
                 <button

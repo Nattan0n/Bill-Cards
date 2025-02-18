@@ -274,27 +274,6 @@ const QrCodePopup = ({ bills, onClose }) => {
                       </div>
 
                       <div className="grid grid-cols-2 gap-3">
-                        {/* <div className="bg-blue-50 p-3 rounded-xl">
-                          <div className="flex items-center justify-center gap-2">
-                            <span className="material-symbols-outlined text-blue-600">
-                              inventory
-                            </span>
-                            <span
-                              className={`inline-flex items-center px-2.5 py-1 rounded-lg ${
-                                bill.totalQty > 0
-                                  ? "bg-green-50 text-green-700"
-                                  : "bg-red-50 text-red-700"
-                              } text-xs font-medium`}
-                            >
-                              <span className="material-symbols-outlined text-sm mr-1">
-                                {bill.totalQty > 0
-                                  ? "add_circle"
-                                  : "remove_circle"}
-                              </span>
-                              {bill.totalQty}
-                            </span>
-                          </div>
-                        </div> */}
                         <div className="bg-gray-50 p-3 rounded-xl">
                           <div className="text-center font-medium text-gray-700">
                             {bill.M_SUBINV}

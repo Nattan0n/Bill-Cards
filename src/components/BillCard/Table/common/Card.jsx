@@ -15,120 +15,105 @@ const Card = ({
     rootMargin: "-20% 0px",
   });
 
+  // Sequence number with leading zero
+  const sequenceNumber = String(startingIndex + index + 1).padStart(2, '0');
+
   return (
     <div
       ref={ref}
-      className={`group bg-white rounded-2xl overflow-hidden 
-          transition-all duration-500 transform mb-4 shadow-[-10px_-10px_30px_4px_rgba(0,0,0,0.1),_10px_10px_30px_4px_rgba(45,78,255,0.15)]
-          ${isIntersecting ? "scale-105" : "scale-100"}`}
+      className={`relative bg-white rounded-3xl overflow-hidden 
+        shadow-lg hover:shadow-2xl transition-all duration-300 ease-in-out transform 
+        hover:-translate-y-2 mb-6 border border-gray-100
+        ${isIntersecting ? "scale-[1.02]" : "scale-100"}`}
     >
-      {/* Card Header */}
-      <div className="flex items-center justify-between p-4 bg-gradient-to-r from-indigo-600 via-blue-600 to-blue-800 text-white">
-        <div className="flex items-center space-x-3">
-          <div className="relative inline-flex items-center">
-            <input
-              type="checkbox"
-              checked={selectedRows.includes(index)}
-              onChange={(e) => handleSelectRow(index, e)}
-              className="before:content[''] peer relative h-5 w-5 cursor-pointer appearance-none rounded-md border-2 border-white/50 bg-transparent transition-all checked:border-white checked:bg-white"
-            />
-            <span className="pointer-events-none absolute top-2/4 left-2/4 -translate-y-2/4 -translate-x-2/4 text-blue-600 opacity-0 transition-opacity peer-checked:opacity-100">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="h-3.5 w-3.5"
-                viewBox="0 0 20 20"
-                fill="currentColor"
-                stroke="currentColor"
-                strokeWidth="1"
-              >
-                <path
-                  fillRule="evenodd"
-                  d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                  clipRule="evenodd"
-                />
-              </svg>
-            </span>
-          </div>
-          <span className="text-lg font-medium">{startingIndex + index + 1}</span>
+      {/* Sequence Number */}
+      <div className="absolute top-4 left-4 z-10">
+        <div className="bg-blue-50 text-blue-600 px-3 py-1 rounded-full 
+          text-sm font-bold tracking-wider shadow-sm">
+          {sequenceNumber}
         </div>
-        <div className="flex items-center space-x-2">
-          <span className="material-symbols-outlined text-sm">
-            calendar_today
+      </div>
+
+      {/* Selection Checkbox */}
+      <div className="absolute top-4 right-4 z-10">
+        <div className="relative inline-flex items-center">
+          <input
+            type="checkbox"
+            checked={selectedRows.includes(index)}
+            onChange={(e) => handleSelectRow(index, e)}
+            className="peer relative h-6 w-6 cursor-pointer appearance-none rounded-lg border-2 border-gray-300 bg-white 
+            checked:border-blue-500 checked:bg-blue-500 transition-all duration-200 
+            hover:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-200"
+          />
+          <span className="pointer-events-none absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 
+            text-white opacity-0 transition-opacity peer-checked:opacity-100">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+              <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+            </svg>
           </span>
-          <span className="text-sm">{bill.M_DATE}</span>
         </div>
       </div>
 
       {/* Card Content */}
-      <div className="p-4 cursor-pointer" onClick={() => handleShowPopup(bill)}>
-        <div className="flex space-x-4">
+      <div 
+        className="p-6 cursor-pointer group pt-16" 
+        onClick={() => handleShowPopup(bill)}
+      >
+        <div className="flex items-center space-x-6">
+          {/* Part Image */}
           <div className="flex-shrink-0">
-            <div className="w-20 h-20 rounded-2xl overflow-hidden bg-gray-100 border border-gray-200">
+            <div className="w-24 h-24 rounded-2xl overflow-hidden 
+              border-2 border-gray-100 shadow-md group-hover:shadow-lg 
+              transition-all duration-300">
               <PartImage
                 partNumber={bill.M_PART_NUMBER}
-                width="w-20"
-                height="h-20"
-                className="object-cover"
+                width="w-24"
+                height="h-24"
+                className="object-cover group-hover:scale-110 transition-transform duration-300"
               />
             </div>
           </div>
-          <div className="flex-1">
-            <h3 className="text-lg font-semibold text-gray-900 mb-1">
+
+          {/* Part Details */}
+          <div className="flex-1 space-y-2">
+            <h3 className="text-xl font-bold text-gray-800 group-hover:text-blue-600 transition-colors">
               {bill.M_PART_NUMBER}
             </h3>
-            <p className="text-sm text-gray-600 line-clamp-2 mb-3">
+            <p className="text-sm text-gray-600 line-clamp-2 group-hover:text-gray-800 transition-colors">
               {bill.M_PART_DESCRIPTION}
             </p>
-            <div className="flex flex-col space-y-2">
-              {/* Transaction Type */}
-              {/* <span className="inline-flex items-center px-2.5 py-1 w-fit rounded-lg bg-indigo-50 text-xs font-medium text-indigo-700">
-                {bill.TRANSACTION_TYPE_NAME}
-              </span> */}
-
-              {/* SubInventory */}
-              <div className="flex items-center space-x-3">
-                <div className="flex items-center space-x-1 bg-gray-50 px-3 py-1.5 rounded-lg">
-                  <span className="material-symbols-outlined text-gray-600 text-sm">
-                    inventory_2
-                  </span>
-                  <span className="text-sm text-gray-600 font-medium">
-                    {bill.M_SUBINV}
-                  </span>
-                </div>
-
-                {/* Quantity */}
-                <span
-                  className={`inline-flex items-center px-2.5 py-1 rounded-lg ${
-                    bill.totalQty > 0
-                      ? "bg-green-50 text-green-700"
-                      : "bg-red-50 text-red-700"
-                  } text-xs font-medium`}
-                >
-                  <span className="material-symbols-outlined text-sm mr-1">
-                    {bill.totalQty > 0 ? "add_circle" : "remove_circle"}
-                  </span>
-                  {bill.totalQty}
+            
+            {/* SubInventory Tag */}
+            <div className="flex items-center">
+              <span className="inline-flex items-center px-3 py-1 
+                bg-orange-50 text-orange-600 rounded-full text-xs font-medium 
+                group-hover:bg-orange-100 transition-colors">
+                <span className="material-symbols-outlined text-sm mr-1">
+                  inventory_2
                 </span>
-              </div>
+                {bill.M_SUBINV}
+              </span>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Card Footer */}
-      <div className="px-4 py-3 bg-gray-50 flex justify-between items-center">
-        {/* Transaction Type */}
-        <span className="inline-flex items-center px-2.5 py-1 w-fit rounded-lg bg-indigo-50 text-xs font-medium text-indigo-700">
-          {bill.TRANSACTION_TYPE_NAME}
-        </span>
+      {/* Details Button */}
+      <div className="px-6 pb-6">
         <button
           onClick={(e) => {
             e.stopPropagation();
             handleShowPopup(bill);
           }}
-          className="flex items-center px-4 py-2 bg-gradient-to-r from-indigo-600 to-blue-700 text-white text-sm font-medium rounded-lg transition-colors"
+          className="w-full py-3 bg-gradient-to-r from-blue-600 to-indigo-700 
+          text-white text-sm font-semibold rounded-xl 
+          hover:from-blue-700 hover:to-indigo-800 
+          focus:outline-none focus:ring-2 focus:ring-blue-400 
+          transition-all duration-300 ease-in-out 
+          transform hover:scale-[1.02] active:scale-95 
+          shadow-md hover:shadow-lg"
         >
-          Details
+          View Details
         </button>
       </div>
     </div>

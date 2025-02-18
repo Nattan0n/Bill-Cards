@@ -8,7 +8,9 @@ export const SearchInput = ({ value, onChange, onScan, isMobile = false }) => {
   }`;
 
   return (
-    <div className={`relative flex items-center ${isMobile ? "w-full" : "w-96"}`}>
+    <div
+      className={`relative flex items-center ${isMobile ? "w-full" : "w-96"}`}
+    >
       {/* ไอคอนค้นหา */}
       <div className="absolute left-3 text-blue-600">
         <svg
@@ -34,7 +36,9 @@ export const SearchInput = ({ value, onChange, onScan, isMobile = false }) => {
         value={value}
         onChange={onChange}
         placeholder={
-          isMobile ? "Search Part by Part NO. or Part Name" : "Search Part by Part NO. or Part Name"
+          isMobile
+            ? "Search Part by Part NO. or Part Name"
+            : "Search Part by Part NO. or Part Name"
         }
         className="w-full pl-10 pr-12 py-3 text-sm bg-white rounded-xl border border-gray-200/75 
           shadow-sm hover:border-blue-300 focus:border-blue-400 focus:ring-4 focus:ring-blue-100

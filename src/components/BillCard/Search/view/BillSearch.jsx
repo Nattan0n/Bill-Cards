@@ -19,7 +19,7 @@ const BillSearch = ({
   defaultDates,
   filteredBills,
   selectedTableRows,
-  bills
+  bills,
 }) => {
   // States
   const [searchTerm, setSearchTerm] = useState("");
@@ -47,7 +47,7 @@ const BillSearch = ({
 
   const handleOpenDateFilterPopup = () => setIsDateFilterPopupOpen(true);
   const handleCloseDateFilterPopup = () => setIsDateFilterPopupOpen(false);
-  
+
   const handleApplyDateFilter = (dateRange) => {
     onFilterChange(dateRange);
     setIsDateFilterPopupOpen(false);
@@ -170,20 +170,17 @@ const BillSearch = ({
       )}
 
       {showQrPopup && (
-        <QrCodePopup 
-          bills={selectedBillsForQr} 
-          onClose={handleCloseQrPopup} 
-        />
+        <QrCodePopup bills={selectedBillsForQr} onClose={handleCloseQrPopup} />
       )}
 
-      {isDateFilterPopupOpen && (
+      {/* {isDateFilterPopupOpen && (
         <DateFilterPopup
           isOpen={isDateFilterPopupOpen}
           onClose={handleCloseDateFilterPopup}
           onApply={handleApplyDateFilter}
           defaultDates={defaultDates}
         />
-      )}
+      )} */}
     </div>
   );
 };

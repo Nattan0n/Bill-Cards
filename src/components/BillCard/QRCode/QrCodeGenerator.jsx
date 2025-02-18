@@ -1,7 +1,7 @@
 // QrCodeGenerator.jsx
 import React, { useState, useEffect } from "react";
 import QRCode from "qrcode";
-import Logo from "../../../assets/images/thairung-logo.png"
+import Logo from "../../../assets/images/thairung-logo.png";
 
 export const getQRCodeDataUrl = async (bill) => {
   try {
@@ -17,7 +17,7 @@ export const getQRCodeDataUrl = async (bill) => {
       {
         width: 500,
         margin: 1,
-        errorCorrectionLevel: 'H',
+        errorCorrectionLevel: "H",
         color: {
           dark: "#000000",
           light: "#ffffff",
@@ -29,8 +29,8 @@ export const getQRCodeDataUrl = async (bill) => {
     );
 
     // สร้าง canvas
-    const canvas = document.createElement('canvas');
-    const ctx = canvas.getContext('2d');
+    const canvas = document.createElement("canvas");
+    const ctx = canvas.getContext("2d");
     const size = 500;
     canvas.width = size;
     canvas.height = size;
@@ -61,40 +61,38 @@ export const getQRCodeDataUrl = async (bill) => {
 
       // วาดพื้นหลังสีขาวแบบสี่เหลี่ยม
       const padding = 10; // ระยะห่างขอบ
-      ctx.fillStyle = 'white';
+      ctx.fillStyle = "white";
       ctx.fillRect(
         logoX - padding,
         logoY - padding,
-        logoWidth + (padding * 2),
-        logoHeight + (padding * 2)
+        logoWidth + padding * 2,
+        logoHeight + padding * 2
       );
 
       // วาด logo
       ctx.drawImage(logo, logoX, logoY, logoWidth, logoHeight);
 
       // เพิ่มขอบ
-      ctx.strokeStyle = '#ffffff';
+      ctx.strokeStyle = "#ffffff";
       ctx.lineWidth = 5;
       ctx.strokeRect(
         logoX - padding,
         logoY - padding,
-        logoWidth + (padding * 2),
-        logoHeight + (padding * 2)
+        logoWidth + padding * 2,
+        logoHeight + padding * 2
       );
 
       // เพิ่มเงา (optional)
-      ctx.shadowColor = 'rgba(0, 0, 0, 0.2)';
+      ctx.shadowColor = "rgba(0, 0, 0, 0.2)";
       ctx.shadowBlur = 10;
       ctx.shadowOffsetX = 0;
       ctx.shadowOffsetY = 0;
-
     } catch (logoError) {
       console.warn("Failed to add logo to QR code:", logoError);
       return qrDataUrl;
     }
 
-    return canvas.toDataURL('image/png');
-
+    return canvas.toDataURL("image/png");
   } catch (error) {
     console.error("Failed to generate QR code:", error);
     return null;
@@ -123,12 +121,12 @@ export const generateQRCodeElement = (bill) => {
       src={qrUrl}
       alt="QR Code"
       className="w-full h-full object-contain"
-      style={{ maxWidth: '250px', maxHeight: '250px' }}
+      style={{ maxWidth: "250px", maxHeight: "250px" }}
     />
   ) : null;
 };
 
 export default {
   getQRCodeDataUrl,
-  generateQRCodeElement
+  generateQRCodeElement,
 };

@@ -229,57 +229,63 @@ const ScanQrCodePopup = ({
     };
   };
 
-// QR Code scanning function
-const scanQRCode = async () => {
-  if (!videoRef.current || !canvasRef.current || !hasPermission || !isCameraReady) return null;
+  // QR Code scanning function
+  const scanQRCode = async () => {
+    if (
+      !videoRef.current ||
+      !canvasRef.current ||
+      !hasPermission ||
+      !isCameraReady
+    )
+      return null;
 
-  const video = videoRef.current;
-  const canvas = canvasRef.current;
-  const context = canvas.getContext('2d', { willReadFrequently: true });
+    const video = videoRef.current;
+    const canvas = canvasRef.current;
+    const context = canvas.getContext("2d", { willReadFrequently: true });
 
-  // Check if video is ready
-  if (!video.videoWidth || !video.videoHeight) {
-    console.log('Video dimensions not ready yet');
-    return null;
-  }
-
-  try {
-    // Set canvas dimensions to match video
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-
-    // Draw current video frame to canvas
-    context.drawImage(video, 0, 0, canvas.width, canvas.height);
-
-    // Get image data for QR code scanning
-    const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
-    
-    if (!imageData.width || !imageData.height) {
-      console.log('Image data dimensions are invalid');
+    // Check if video is ready
+    if (!video.videoWidth || !video.videoHeight) {
+      console.log("Video dimensions not ready yet");
       return null;
     }
 
-    const code = jsQR(imageData.data, imageData.width, imageData.height);
+    try {
+      // Set canvas dimensions to match video
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
 
-    if (code) {
-      try {
-        const qrData = JSON.parse(code.data);
-        if (!qrData.partNumber || !qrData.subinventory) {
-          throw new Error("QR Code ไม่ถูกต้อง");
-        }
-        return qrData;
-      } catch (error) {
-        console.error("Invalid QR Code data:", error);
+      // Draw current video frame to canvas
+      context.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+      // Get image data for QR code scanning
+      const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
+
+      if (!imageData.width || !imageData.height) {
+        console.log("Image data dimensions are invalid");
         return null;
       }
+
+      const code = jsQR(imageData.data, imageData.width, imageData.height);
+
+      if (code) {
+        try {
+          const qrData = JSON.parse(code.data);
+          if (!qrData.partNumber || !qrData.subinventory) {
+            throw new Error("QR Code ไม่ถูกต้อง");
+          }
+          return qrData;
+        } catch (error) {
+          console.error("Invalid QR Code data:", error);
+          return null;
+        }
+      }
+    } catch (error) {
+      console.error("Error scanning QR code:", error);
+      return null;
     }
-  } catch (error) {
-    console.error("Error scanning QR code:", error);
+
     return null;
-  }
-  
-  return null;
-};
+  };
 
   // Handle scan button click
   const handleScan = async () => {

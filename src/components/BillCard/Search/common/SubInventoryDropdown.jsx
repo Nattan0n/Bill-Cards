@@ -1,13 +1,13 @@
 // src/components/BillCard/SearchComponents/SubInventoryDropdown.jsx
 import React, { useState, useRef } from "react";
-import { HoverTooltip } from './HoverTooltip';
+import { HoverTooltip } from "./HoverTooltip";
 
 export const SubInventoryDropdown = ({
   onSelectSubInv,
   onSelectItemId,
   selectedSubInv = "GP-DAIK",
   selectedItemId,
-  inventories = []
+  inventories = [],
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
@@ -17,17 +17,18 @@ export const SubInventoryDropdown = ({
   // Filter and sort inventories
   const filteredInventories = React.useMemo(() => {
     if (!inventories) return [];
-    
+
     let filtered = [...inventories];
-    
+
     if (searchTerm) {
       const search = searchTerm.toLowerCase();
-      filtered = filtered.filter(inv => 
-        inv.name.toLowerCase().includes(search) ||
-        inv.description?.toLowerCase().includes(search)
+      filtered = filtered.filter(
+        (inv) =>
+          inv.name.toLowerCase().includes(search) ||
+          inv.description?.toLowerCase().includes(search)
       );
     }
-    
+
     return filtered.sort((a, b) => {
       if (a.name === selectedSubInv) return -1;
       if (b.name === selectedSubInv) return 1;
@@ -44,7 +45,7 @@ export const SubInventoryDropdown = ({
   return (
     <div className="relative" ref={dropdownRef}>
       {/* Main Button */}
-      <div 
+      <div
         className="relative group"
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
@@ -68,7 +69,7 @@ export const SubInventoryDropdown = ({
         {/* Hover Tooltip */}
         {isHovered && (
           <div className="hidden md:block">
-            <HoverTooltip 
+            <HoverTooltip
               title="Subinventory Selection"
               text="Filter and access inventory items by selecting a specific Subinventory. Each Subinventory contains a unique set of parts and materials."
             />
@@ -105,7 +106,9 @@ export const SubInventoryDropdown = ({
                   onClick={() => setSearchTerm("")}
                   className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
                 >
-                  <span className="material-symbols-outlined text-sm">close</span>
+                  <span className="material-symbols-outlined text-sm">
+                    close
+                  </span>
                 </button>
               )}
             </div>
@@ -118,8 +121,8 @@ export const SubInventoryDropdown = ({
                 key={inv.name}
                 onClick={() => handleSelectInventory(inv)}
                 className={`w-full text-left p-3 hover:bg-orange-50/50 transition-colors ${
-                  selectedSubInv === inv.name 
-                    ? "bg-orange-50 sticky top-0 z-10 border-b border-orange-100" 
+                  selectedSubInv === inv.name
+                    ? "bg-orange-50 sticky top-0 z-10 border-b border-orange-100"
                     : ""
                 }`}
               >

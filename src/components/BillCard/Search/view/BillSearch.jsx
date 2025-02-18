@@ -1,4 +1,3 @@
-// src/components/BillCard/Search/view/BillSearch.jsx
 import React, { useState, useRef } from "react";
 import { SearchInput, ActionButtons, MobileDropdownMenu } from "../common";
 import { useClickOutside } from "../../../../hooks/useClickOutside";
@@ -22,6 +21,7 @@ const BillSearch = ({
   selectedTableRows,
   bills
 }) => {
+  // States
   const [searchTerm, setSearchTerm] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [showQrPopup, setShowQrPopup] = useState(false);
@@ -31,9 +31,11 @@ const BillSearch = ({
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isGeneratingQr, setIsGeneratingQr] = useState(false);
 
+  // Refs
   const dropdownRef = useRef(null);
   useClickOutside(dropdownRef, () => setIsDropdownOpen(false));
 
+  // Handlers
   const handleSearchChange = (e) => {
     const value = e.target.value;
     setSearchTerm(value);
@@ -45,6 +47,7 @@ const BillSearch = ({
 
   const handleOpenDateFilterPopup = () => setIsDateFilterPopupOpen(true);
   const handleCloseDateFilterPopup = () => setIsDateFilterPopupOpen(false);
+  
   const handleApplyDateFilter = (dateRange) => {
     onFilterChange(dateRange);
     setIsDateFilterPopupOpen(false);
@@ -145,17 +148,15 @@ const BillSearch = ({
 
       {/* Popups */}
       {isModalOpen && (
- <HandheldScanner
- isOpen={isModalOpen}
- onClose={(shouldCloseNav) => {
-   // ถ้า shouldCloseNav เป็น true ให้ปิด Navigation
-   // ถ้า false ให้คงไว้
-   setIsModalOpen(false);
- }}
- bills={bills}
- selectedSubInv={selectedSubInv}
- onSelectSubInv={onSelectSubInv}
-/>
+        <HandheldScanner
+          isOpen={isModalOpen}
+          onClose={(shouldCloseNav) => {
+            setIsModalOpen(false);
+          }}
+          bills={bills}
+          selectedSubInv={selectedSubInv}
+          onSelectSubInv={onSelectSubInv}
+        />
       )}
 
       {showQrSelectionPopup && (
@@ -169,7 +170,10 @@ const BillSearch = ({
       )}
 
       {showQrPopup && (
-        <QrCodePopup bills={selectedBillsForQr} onClose={handleCloseQrPopup} />
+        <QrCodePopup 
+          bills={selectedBillsForQr} 
+          onClose={handleCloseQrPopup} 
+        />
       )}
 
       {isDateFilterPopupOpen && (

@@ -9,8 +9,8 @@ const formatNumber = (number) => {
   // แปลงเป็นตัวเลข
   const num = Number(number);
   
-  // ถ้าเป็น 0 ให้แสดงเป็น "-"
-  if (num === 0) return "-";
+  // ถ้าเป็น 0 ให้แสดงเป็น "0"
+  if (num === 0) return "0";
   
   // ถ้าเป็นจำนวนเต็ม ให้แสดงแค่จำนวนเต็ม
   if (Number.isInteger(num)) {

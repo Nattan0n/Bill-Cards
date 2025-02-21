@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { Loader2 } from "lucide-react";
 import Swal from "sweetalert2";
 import BillDetailPopup from "../../Table/view/BillDetail/BillDetailPopup";
@@ -10,30 +10,131 @@ const HandheldScanner = ({
   onSelectSubInv,
   selectedSubInv,
 }) => {
+  // States
   const [scannedData, setScannedData] = useState("");
   const [isScanning, setIsScanning] = useState(false);
   const [scanningMessage, setScanningMessage] = useState("");
   const [showDetailPopup, setShowDetailPopup] = useState(false);
   const [selectedBill, setSelectedBill] = useState(null);
   const [isClosing, setIsClosing] = useState(false);
+  const [lastScanTime, setLastScanTime] = useState(0);
+  const [isChangingSubInv, setIsChangingSubInv] = useState(false);
+  const [isScanButtonActive, setIsScanButtonActive] = useState(false);
 
-  // Find matching bill from scanned data
+  // Refs
+  const bufferRef = useRef("");
+  const timeoutRef = useRef(null);
+  const scanTimeoutRef = useRef(null);
+  const hiddenInputRef = useRef(null);
+
+  // Validate QR data with detailed logging
+  const validateQrData = (data) => {
+    console.log('Raw QR Data:', data);
+
+    // Handle string input
+    if (typeof data === 'string') {
+      try {
+        // Try parsing as JSON first
+        const parsedData = JSON.parse(data);
+        console.log('Successfully parsed string to JSON:', parsedData);
+        return validateQrData(parsedData);
+      } catch (e) {
+        // If not JSON, use as direct part number
+        if (/^[A-Za-z0-9\-_]+$/.test(data.trim())) {
+          console.log('Direct Part Number:', data.trim());
+          return {
+            partNumber: data.trim(),
+            subinventory: selectedSubInv
+          };
+        }
+        throw new Error('Invalid Part Number format');
+      }
+    }
+
+    // Validate JSON data structure
+    if (!data || typeof data !== 'object') {
+      throw new Error('Invalid QR Code data');
+    }
+
+    // Check required fields
+    if (!data.partNumber) {
+      throw new Error('Part Number not found in QR Code');
+    }
+
+    // Validate Part Number format
+    const partNumberRegex = /^[A-Za-z0-9][A-Za-z0-9\-_]*[A-Za-z0-9]$/;
+    if (!partNumberRegex.test(data.partNumber.trim())) {
+      throw new Error('Invalid Part Number format');
+    }
+
+    // Validate Subinventory if present
+    if (data.subinventory) {
+      const subinvRegex = /^[A-Z0-9\-]+$/;
+      if (!subinvRegex.test(data.subinventory.trim())) {
+        throw new Error('Invalid Subinventory format');
+      }
+    }
+
+    return {
+      partNumber: data.partNumber.trim(),
+      subinventory: data.subinventory?.trim() || selectedSubInv
+    };
+  };
+
+  // Find matching bill with extensive logging
   const findMatchingBill = useCallback(
     (qrData) => {
-      if (!qrData?.partNumber || !bills) return null;
+      console.log('Matching QR Data:', qrData);
+      console.log('Total Bills:', bills?.length);
+      console.log('Current Subinventory:', selectedSubInv);
 
-      const scannedPartNumber = String(qrData.partNumber).trim().toLowerCase();
-      const matchingBills = bills.filter((bill) => {
-        const billPartNumber = String(bill?.M_PART_NUMBER || "")
-          .trim()
-          .toLowerCase();
-        return billPartNumber === scannedPartNumber;
+      if (!qrData?.partNumber || !Array.isArray(bills)) {
+        console.log('Invalid search input:', { qrData, billCount: bills?.length });
+        return null;
+      }
+
+      // Normalize search terms
+      const searchPartNumber = qrData.partNumber.trim().toUpperCase();
+      const searchSubInv = (qrData.subinventory || selectedSubInv).trim().toUpperCase();
+
+      console.log('Search Criteria:', {
+        partNumber: searchPartNumber,
+        subinventory: searchSubInv
       });
 
-      if (!matchingBills.length) return null;
+      // Find matching bills with detailed logging
+      const matchingBills = bills.filter((bill) => {
+        if (!bill?.M_PART_NUMBER || !bill?.M_SUBINV) {
+          console.log('Invalid bill data:', bill);
+          return false;
+        }
 
+        const billPartNumber = bill.M_PART_NUMBER.trim().toUpperCase();
+        const billSubInv = bill.M_SUBINV.trim().toUpperCase();
+
+        const isMatch = billPartNumber === searchPartNumber && 
+                        billSubInv === searchSubInv;
+
+        console.log('Comparing Bill:', {
+          billPartNumber,
+          billSubInv,
+          match: isMatch
+        });
+
+        return isMatch;
+      });
+
+      console.log('Matching Bills:', matchingBills);
+
+      if (matchingBills.length === 0) {
+        return null;
+      }
+
+      // Sort bills by date and prepare result
       const sortedBills = matchingBills.sort((a, b) => {
-        return new Date(b.M_DATE) - new Date(a.M_DATE);
+        const dateA = new Date(a.M_DATE);
+        const dateB = new Date(b.M_DATE);
+        return dateB - dateA;
       });
 
       const totalQty = matchingBills.reduce(
@@ -41,136 +142,164 @@ const HandheldScanner = ({
         0
       );
 
-      return {
+      const result = {
         ...sortedBills[0],
         allRelatedBills: sortedBills,
         relatedBills: sortedBills,
         totalQty,
         billCount: matchingBills.length,
-        latestDate: new Date(sortedBills[0].M_DATE),
+        latestDate: new Date(sortedBills[0].M_DATE)
       };
+
+      console.log('Final Matching Result:', result);
+      return result;
     },
-    [bills]
+    [bills, selectedSubInv]
   );
+
+  // Process scanned data with comprehensive error handling
+  const processScannedData = async (input) => {
+    console.log('Raw Scanned Input:', input);
+
+    // Debounce handling
+    const now = Date.now();
+    if (now - lastScanTime < 1000) {
+      console.log('Scan debounced - too soon');
+      return;
+    }
+    setLastScanTime(now);
+
+    try {
+      setIsScanning(true);
+      setScanningMessage("Processing data...");
+
+      // Clean and parse input
+      const cleanedInput = input.replace(/[\n\r]/g, '').trim();
+      console.log('Cleaned Input:', cleanedInput);
+
+      // Validate and find bill
+      const validatedData = validateQrData(cleanedInput);
+      console.log('Validated QR Data:', validatedData);
+
+      const foundBill = findMatchingBill(validatedData);
+      console.log('Found Bill:', foundBill);
+
+      if (foundBill) {
+        if (navigator.vibrate) navigator.vibrate(200);
+        setScanningMessage("Data found! Loading details...");
+        
+        setSelectedBill(foundBill);
+        setShowDetailPopup(true);
+      } else {
+        // Detailed not found handling
+        await Swal.fire({
+          title: "No Data Found",
+          html: `
+            <div class="space-y-2">
+              <p><strong>Part Number:</strong> ${validatedData.partNumber}</p>
+              <p><strong>Subinventory:</strong> ${validatedData.subinventory}</p>
+              <p class="text-sm text-gray-500 mt-4">Please verify the data exists in the system.</p>
+            </div>
+          `,
+          icon: "warning",
+          confirmButtonText: "OK"
+        });
+      }
+    } catch (error) {
+      console.error('Complete Scan Processing Error:', error);
+      await Swal.fire({
+        title: "Error",
+        text: error.message || "Unable to process scanned data",
+        icon: "error",
+        confirmButtonText: "OK"
+      });
+    } finally {
+      setIsScanning(false);
+      setScanningMessage("Ready to scan");
+      bufferRef.current = '';
+    }
+  };
 
   // Handle scanner input
-  const handleScannerInput = useCallback(
-    async (input) => {
-      if (!input) return;
-
-      try {
-        setIsScanning(true);
-        setScanningMessage("กำลังประมวลผลข้อมูล...");
-
-        let qrData;
-        try {
-          qrData = JSON.parse(input);
-          if (!qrData.partNumber || !qrData.subinventory) {
-            throw new Error("QR Code ไม่ถูกต้อง");
-          }
-        } catch (error) {
-          // If not JSON, try to use the input directly as part number
-          qrData = {
-            partNumber: input.trim(),
-            subinventory: selectedSubInv,
-          };
-        }
-
-        const scannedSubInv = qrData.subinventory;
-        const scannedPartNumber = qrData.partNumber;
-
-        // Find matching bill
-        let foundBill = findMatchingBill(qrData);
-
-        // Handle subinventory mismatch
-        if (!foundBill && scannedSubInv && scannedSubInv !== selectedSubInv) {
-          const willChange = await Swal.fire({
-            title: "พบข้อมูลจาก Subinventory อื่น",
-            html: `Part Number นี้อยู่ใน ${scannedSubInv}<br>ต้องการเปลี่ยน Subinventory หรือไม่?`,
-            icon: "question",
-            showCancelButton: true,
-            confirmButtonText: "เปลี่ยน",
-            cancelButtonText: "ยกเลิก",
-            confirmButtonColor: "#3085d6",
-            cancelButtonColor: "#d33",
-          });
-
-          if (willChange.isConfirmed) {
-            await onSelectSubInv(scannedSubInv);
-            // Bill will be found after subinventory change triggers re-render
-            return;
-          }
-        }
-
-        if (foundBill) {
-          setScanningMessage("พบข้อมูล! กำลังแสดงรายละเอียด...");
-          setSelectedBill(foundBill);
-          setShowDetailPopup(true);
-        } else {
-          await Swal.fire({
-            title: "ไม่พบข้อมูล",
-            html: `ไม่พบข้อมูล Bill ที่ตรงกับรหัสที่สแกน<br><br>
-                 <strong>ข้อมูลที่สแกนได้:</strong><br>
-                 Part Number: ${scannedPartNumber || "ไม่พบข้อมูล"}<br>
-                 Subinventory: ${
-                   scannedSubInv || selectedSubInv || "ไม่พบข้อมูล"
-                 }`,
-            icon: "warning",
-            confirmButtonText: "ตกลง",
-            confirmButtonColor: "#3085d6",
-          });
-        }
-      } catch (error) {
-        console.error("Scanning error:", error);
-        await Swal.fire({
-          title: "เกิดข้อผิดพลาด",
-          text: error.message,
-          icon: "error",
-          confirmButtonText: "ตกลง",
-          confirmButtonColor: "#3085d6",
-        });
-      } finally {
-        setIsScanning(false);
-        setScannedData("");
-        if (!showDetailPopup) {
-          setScanningMessage("พร้อมรับข้อมูลจากเครื่องสแกน");
-        }
-      }
-    },
-    [selectedSubInv, onSelectSubInv, findMatchingBill]
-  );
-
-  // Listen for scanner input
   useEffect(() => {
-    let buffer = "";
-    let timeout;
-
     const handleKeyPress = (e) => {
-      // Ignore if popup is not open
-      if (!isOpen) return;
+      if (!isOpen || !isScanButtonActive) return;
 
-      // Reset timeout
-      clearTimeout(timeout);
+      console.log('Key pressed:', {
+        key: e.key,
+        keyCode: e.keyCode,
+        currentBuffer: bufferRef.current
+      });
 
-      // Add character to buffer
-      buffer += e.key;
+      // Clear existing timeouts
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+      if (scanTimeoutRef.current) clearTimeout(scanTimeoutRef.current);
 
-      // Process buffer after delay (assuming scanner sends data quickly)
-      timeout = setTimeout(() => {
-        if (buffer.length > 0) {
-          handleScannerInput(buffer);
-          buffer = "";
+      // Handle Enter key
+      if (e.key === 'Enter' || e.keyCode === 13) {
+        e.preventDefault();
+        console.log('Enter key detected, processing buffer:', bufferRef.current);
+        
+        if (bufferRef.current) {
+          processScannedData(bufferRef.current);
+          bufferRef.current = '';
         }
-      }, 50);
+        return;
+      }
+
+      // Add to buffer if valid character
+      if (/[\w\d\-_.:{}[\]"']/.test(e.key)) {
+        bufferRef.current += e.key;
+
+        // Set timeout for processing
+        timeoutRef.current = setTimeout(() => {
+          if (bufferRef.current) {
+            processScannedData(bufferRef.current);
+            bufferRef.current = '';
+          }
+        }, 100);
+
+        // Set timeout for clearing buffer
+        scanTimeoutRef.current = setTimeout(() => {
+          if (bufferRef.current) {
+            console.log('Scan timeout - clearing buffer:', bufferRef.current);
+            bufferRef.current = '';
+            setIsScanButtonActive(false);
+            setScanningMessage("Press scan button again");
+          }
+        }, 1000);
+      }
     };
 
-    window.addEventListener("keypress", handleKeyPress);
+    window.addEventListener('keypress', handleKeyPress);
     return () => {
-      window.removeEventListener("keypress", handleKeyPress);
-      clearTimeout(timeout);
+      window.removeEventListener('keypress', handleKeyPress);
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+      if (scanTimeoutRef.current) clearTimeout(scanTimeoutRef.current);
     };
-  }, [isOpen, handleScannerInput]);
+  }, [isOpen, isScanButtonActive, processScannedData]);
 
+  // Handle scan button press
+  const handleScanButtonPress = () => {
+    setIsScanButtonActive(true);
+    if (navigator.vibrate) {
+      navigator.vibrate(200);
+    }
+    
+    if (hiddenInputRef.current) {
+      hiddenInputRef.current.focus();
+    }
+
+    // Reset scan button after timeout
+    setTimeout(() => {
+      if (!showDetailPopup) {
+        setIsScanButtonActive(false);
+        setScanningMessage("Press scan button again");
+      }
+    }, 5000);
+  };
+
+  // Handle close
   const handleClose = () => {
     setIsClosing(true);
     setTimeout(() => {
@@ -179,6 +308,9 @@ const HandheldScanner = ({
       setShowDetailPopup(false);
       setSelectedBill(null);
       setScannedData("");
+      bufferRef.current = '';
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+      if (scanTimeoutRef.current) clearTimeout(scanTimeoutRef.current);
     }, 300);
   };
 
@@ -205,6 +337,22 @@ const HandheldScanner = ({
               isClosing ? "animate__zoomOut" : "animate__zoomIn"
             }`}
           >
+            {/* Hidden input for scanner */}
+            <input
+              ref={hiddenInputRef}
+              type="text"
+              className="opacity-0 h-0 w-0 absolute"
+              autoComplete="off"
+              onKeyPress={(e) => {
+                if (e.key === 'Enter') {
+                  const scannedValue = e.target.value;
+                  console.log('Scanned value:', scannedValue);
+                  processScannedData(scannedValue);
+                  e.target.value = '';
+                }
+              }}
+            />
+
             {/* Header */}
             <div className="bg-gradient-to-r from-indigo-600 via-blue-600 to-blue-800 px-6 py-4">
               <div className="flex items-center justify-between">
@@ -235,8 +383,10 @@ const HandheldScanner = ({
             {/* Content */}
             <div className="p-6">
               <div className="text-center space-y-4">
-                <div className="w-16 h-16 mx-auto bg-blue-50 rounded-full flex items-center justify-center">
-                  <span className="material-symbols-outlined text-3xl text-blue-600">
+                <div className={`w-16 h-16 mx-auto rounded-full flex items-center justify-center
+                  ${isScanning ? 'bg-blue-100 animate-pulse' : 'bg-blue-50'}`}>
+                  <span className={`material-symbols-outlined text-3xl text-blue-600
+                    ${isScanning ? 'animate-spin' : ''}`}>
                     {isScanning ? "hourglass_top" : "qr_code_scanner"}
                   </span>
                 </div>
@@ -247,7 +397,7 @@ const HandheldScanner = ({
                   </h3>
                   <p className="text-sm text-gray-500">
                     {scanningMessage ||
-                      "กรุณาใช้เครื่องสแกนเพื่อสแกน QR Code หรือ Barcode"}
+                      "กรุณากดปุ่มสแกนเพื่อเริ่มต้นการสแกน QR Code หรือ Barcode"}
                   </p>
                 </div>
 
@@ -257,11 +407,31 @@ const HandheldScanner = ({
                   </div>
                 )}
 
+                {/* Scan Button */}
+                <div className="pt-4 flex justify-center">
+                <button
+                    onClick={handleScanButtonPress}
+                    disabled={isScanning}
+                    className={`flex items-center justify-center gap-2 px-6 py-3 rounded-xl
+                      ${isScanButtonActive 
+                        ? 'bg-blue-600 text-white'
+                        : 'bg-blue-50 text-blue-600'} 
+                      transition-all duration-200 hover:shadow-lg
+                      disabled:opacity-50 disabled:cursor-not-allowed`}
+                  >
+                    <span className="material-symbols-outlined text-2xl">
+                      qr_code_scanner
+                    </span>
+                    <span className="font-medium">
+                      {isScanButtonActive ? 'กำลังสแกน...' : 'เริ่มสแกน'}
+                    </span>
+                  </button>
+                </div>
+
                 <div className="pt-4">
                   <div className="p-4 bg-blue-50 rounded-xl">
                     <p className="text-sm text-blue-700">
-                      เชื่อมต่อเครื่องสแกนของคุณและเริ่มสแกนได้ทันที
-                      ระบบจะประมวลผลข้อมูลโดยอัตโนมัติ
+                      กดปุ่มสแกนและใช้เครื่องสแกนเพื่อเริ่มต้น ระบบจะประมวลผลข้อมูลโดยอัตโนมัติ
                     </p>
                   </div>
                 </div>

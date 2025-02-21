@@ -1,19 +1,24 @@
-// QrCodeGenerator.jsx
-import React, { useState, useEffect } from "react";
-import QRCode from "qrcode";
-import Logo from "../../../assets/images/thairung-logo.png";
+import QRCode from 'qrcode';
+import Logo from '../../../assets/images/thairung-logo.png';
 
 export const getQRCodeDataUrl = async (bill) => {
   try {
-    // สร้าง QR code พื้นฐานพร้อมข้อมูล subinventory
+    // Comprehensive QR Code data generation
+    const qrData = {
+      partNumber: bill.M_PART_NUMBER || bill.part_number,
+      subinventory: bill.M_SUBINV || bill.secondary_inventory,
+      inventory_item_id: bill.inventory_item_id || bill.inv_item_id,
+      description: bill.M_PART_DESCRIPTION || bill.part_description
+    };
+
+    // Ensure all fields are strings and trimmed
+    Object.keys(qrData).forEach(key => {
+      qrData[key] = qrData[key] ? String(qrData[key]).trim() : '';
+    });
+
+    // Generate QR Code with comprehensive options
     const qrDataUrl = await QRCode.toDataURL(
-      JSON.stringify({
-        partNumber: bill.M_PART_NUMBER,
-        subinventory: bill.M_SUBINV, // เพิ่มข้อมูล subinventory
-        // partDescription: bill.M_PART_DESCRIPTION,
-        // date: bill.M_DATE,
-        // quantity: bill.M_QTY,
-      }),
+      JSON.stringify(qrData),
       {
         width: 500,
         margin: 1,
@@ -28,14 +33,14 @@ export const getQRCodeDataUrl = async (bill) => {
       }
     );
 
-    // สร้าง canvas
+    // Canvas processing for adding logo (existing logic)
     const canvas = document.createElement("canvas");
     const ctx = canvas.getContext("2d");
     const size = 500;
     canvas.width = size;
     canvas.height = size;
 
-    // วาด QR Code
+    // Draw QR Code
     const qrImage = new Image();
     await new Promise((resolve, reject) => {
       qrImage.onload = resolve;
@@ -45,7 +50,7 @@ export const getQRCodeDataUrl = async (bill) => {
     ctx.drawImage(qrImage, 0, 0, size, size);
 
     try {
-      // โหลด logo
+      // Load logo
       const logo = new Image();
       await new Promise((resolve, reject) => {
         logo.onload = resolve;
@@ -53,14 +58,14 @@ export const getQRCodeDataUrl = async (bill) => {
         logo.src = Logo;
       });
 
-      // คำนวณขนาดของ logo แบบสี่เหลี่ยมผืนผ้า
-      const logoWidth = size * 0.2; // ความกว้าง 20% ของ QR Code
-      const logoHeight = logoWidth * (logo.height / logo.width); // คำนวณความสูงตามอัตราส่วน
+      // Calculate logo dimensions
+      const logoWidth = size * 0.2;
+      const logoHeight = logoWidth * (logo.height / logo.width);
       const logoX = (size - logoWidth) / 2;
       const logoY = (size - logoHeight) / 2;
 
-      // วาดพื้นหลังสีขาวแบบสี่เหลี่ยม
-      const padding = 10; // ระยะห่างขอบ
+      // Add white background for logo
+      const padding = 10;
       ctx.fillStyle = "white";
       ctx.fillRect(
         logoX - padding,
@@ -69,10 +74,10 @@ export const getQRCodeDataUrl = async (bill) => {
         logoHeight + padding * 2
       );
 
-      // วาด logo
+      // Draw logo
       ctx.drawImage(logo, logoX, logoY, logoWidth, logoHeight);
 
-      // เพิ่มขอบ
+      // Add border
       ctx.strokeStyle = "#ffffff";
       ctx.lineWidth = 5;
       ctx.strokeRect(
@@ -82,7 +87,7 @@ export const getQRCodeDataUrl = async (bill) => {
         logoHeight + padding * 2
       );
 
-      // เพิ่มเงา (optional)
+      // Add shadow
       ctx.shadowColor = "rgba(0, 0, 0, 0.2)";
       ctx.shadowBlur = 10;
       ctx.shadowOffsetX = 0;

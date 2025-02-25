@@ -42,7 +42,11 @@ const formatInventoryDate = (dateTimeStr) => {
   }
 };
 
-export const InventoryTable = ({ inventory, sortDirection = 'desc', onSortDirectionChange }) => {
+export const InventoryTable = ({ 
+  inventory, 
+  sortDirection = 'desc', 
+  onSortDirectionChange 
+}) => {
   // Add sort state if not provided by parent
   const [localSortDirection, setLocalSortDirection] = useState(sortDirection);
   
@@ -81,6 +85,16 @@ export const InventoryTable = ({ inventory, sortDirection = 'desc', onSortDirect
     if (onSortDirectionChange) {
       onSortDirectionChange(newDirection);
     }
+  };
+
+  // Function to determine document number or type name
+  const getDocumentReference = (item) => {
+    // If source is "source_nu", return m_type_name
+    if (item.eDocumentNo === "source_nu") {
+      return item.transaction_type || "-";
+    }
+    // Otherwise, return eDocumentNo (existing behavior)
+    return item.eDocumentNo || "-";
   };
 
   return (
@@ -188,7 +202,7 @@ export const InventoryTable = ({ inventory, sortDirection = 'desc', onSortDirect
                       <span className="material-symbols-outlined text-sm mr-1">
                         description
                       </span>
-                      <span>{item.eDocumentNo || "-"}</span>
+                      <span>{getDocumentReference(item)}</span>
                     </div>
                   </td>
                   <td className="p-3">

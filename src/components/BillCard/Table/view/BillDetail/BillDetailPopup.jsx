@@ -19,6 +19,7 @@ const BillDetailPopup = ({ bill, onClose }) => {
     endDate: "",
   });
   const [isClosing, setIsClosing] = useState(false);
+  const [sortDirection, setSortDirection] = useState('desc');
 
   // Fetch Bill Card Details
   useEffect(() => {
@@ -222,7 +223,12 @@ const BillDetailPopup = ({ bill, onClose }) => {
   };
 
   const handleExport = () => {
-    exportToExcel(inventoryWithRunningTotal, bill, dateFilter);
+    exportToExcel(
+      inventoryWithRunningTotal, 
+      bill, 
+      dateFilter,
+      sortDirection  // Pass the current sort direction
+    );
   };
 
   if (isLoading) {
@@ -303,7 +309,11 @@ const BillDetailPopup = ({ bill, onClose }) => {
                   onDateChange={handleDateChange}
                   onExport={handleExport}
                 />
-                <InventoryTable inventory={inventoryWithRunningTotal} />
+                  <InventoryTable 
+    inventory={inventoryWithRunningTotal} 
+    sortDirection={sortDirection}
+    onSortDirectionChange={setSortDirection}  // Optional: to update sort direction from table
+  />
               </div>
             </div>
           </div>

@@ -18,6 +18,28 @@ export const exportToExcel = async (
       return;
     }
 
+    // เพิ่มฟังก์ชันใหม่สำหรับจัดรูปแบบวันที่ใน Excel
+const formatDateForExcel = (dateTimeStr) => {
+  try {
+    if (!dateTimeStr) return "-";
+    const date = new Date(dateTimeStr);
+    if (isNaN(date.getTime())) return dateTimeStr;
+    
+    // จัดรูปแบบเป็น วัน/เดือน/ปี เวลา
+    return new Intl.DateTimeFormat('th-TH', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false
+    }).format(date);
+    
+  } catch (error) {
+    console.error("Error formatting date for Excel:", error);
+    return dateTimeStr;
+  }
+};
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet("Inventory Log");
 
@@ -31,7 +53,7 @@ export const exportToExcel = async (
     worksheet.addRow(["Customer:", bill.M_SUBINV]);
     worksheet.addRow([
       "Date Range:",
-      `${dateFilter.startDate} to ${dateFilter.endDate}`,
+      `${formatDateForExcel(dateFilter.startDate)} to ${formatDateForExcel(dateFilter.endDate)}`,
     ]);
     worksheet.addRow([]); // Empty row for spacing
 
@@ -73,7 +95,7 @@ export const exportToExcel = async (
 
       const row = worksheet.addRow([
         index + 1,
-        item.date_time,
+        formatDateForExcel(item.date_time),
         quantityIn,
         quantityOut,
         item.quantity_remaining,

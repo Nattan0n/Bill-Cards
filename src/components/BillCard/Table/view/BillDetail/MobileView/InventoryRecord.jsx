@@ -1,5 +1,5 @@
 // components/BillCard/view/BillDetail/MobileView/InventoryRecord.jsx
-import { formatDate, parseDate } from "../../../../../../utils/dateUtils";
+import { parseDate } from "../../../../../../utils/dateUtils";
 
 // Helper function สำหรับ format ตัวเลข
 const formatNumber = (number) => {
@@ -26,7 +26,16 @@ const formatInventoryDate = (dateTimeStr) => {
     if (!dateTimeStr) return "-";
     const parsedDate = parseDate(dateTimeStr);
     if (!parsedDate) return "-";
-    return formatDate(dateTimeStr);
+    
+    // แก้ไขจาก formatDate เป็น Intl.DateTimeFormat เหมือนในเวอร์ชัน desktop
+    return new Intl.DateTimeFormat('th-TH', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false
+    }).format(parsedDate);
   } catch (error) {
     console.error("Error formatting date:", error);
     return "-";

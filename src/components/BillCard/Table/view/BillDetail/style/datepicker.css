@@ -1,0 +1,125 @@
+/* datepicker.css */
+.react-datepicker {
+    border: none !important;
+    font-family: 'Kanit', sans-serif !important;
+    background: white !important;
+    border-radius: 8px !important;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1) !important;
+  }
+  
+  .react-datepicker__header {
+    background: white !important;
+    border-bottom: 1px solid #e5e7eb !important;
+    padding-top: 0.5rem !important;
+  }
+  
+  .react-datepicker__month {
+    display: grid !important;
+    grid-template-columns: repeat(7, 1fr) !important;
+    gap: 0.2rem !important;
+    padding: 0.5rem !important;
+  }
+  
+  .react-datepicker__week {
+    display: contents !important;
+  }
+  
+  .react-datepicker__day-names {
+    display: grid !important;
+    grid-template-columns: repeat(7, 1fr) !important;
+    gap: 0.2rem !important;
+    padding: 0 0.5rem !important;
+  }
+  
+  .react-datepicker__day-name {
+    text-align: center !important;
+    width: auto !important;
+    margin: 0 !important;
+    color: #6b7280 !important;
+    font-weight: 500 !important;
+  }
+  
+  .react-datepicker__day {
+    text-align: center !important;
+    width: auto !important;
+    height: 2rem !important;
+    line-height: 2rem !important;
+    margin: 0 !important;
+    border-radius: 9999px !important;
+    color: #374151 !important;
+  }
+  
+  .react-datepicker__day:hover {
+    background-color: #e5e7eb !important;
+  }
+  
+  .react-datepicker__day--selected {
+    background-color: #4f46e5 !important;
+    color: white !important;
+  }
+  
+  .react-datepicker__day--keyboard-selected {
+    background-color: #e5e7eb !important;
+    color: #374151 !important;
+  }
+  
+  .react-datepicker__day--today {
+    font-weight: bold !important;
+    color: #4f46e5 !important;
+  }
+  
+  .react-datepicker__triangle {
+    display: none !important;
+  }
+  
+  .react-datepicker-popper {
+    z-index: 9999 !important;
+  }
+  
+  .calendar-popper {
+    z-index: 9999 !important;
+  }
+  
+  /* Styles สำหรับ dropdown ของปี */
+  .react-datepicker__year-dropdown-container {
+    text-align: center !important;
+  }
+  
+  .react-datepicker__year-dropdown {
+    background-color: white !important;
+    border: 1px solid #e5e7eb !important;
+    border-radius: 0.5rem !important;
+    max-height: 200px !important;
+    overflow-y: auto !important;
+    width: 100% !important;
+    padding: 0.5rem 0 !important;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.15) !important;
+  }
+  
+  .react-datepicker__year-option {
+    padding: 0.5rem !important;
+    cursor: pointer !important;
+  }
+  
+  .react-datepicker__year-option:hover {
+    background-color: #f3f4f6 !important;
+  }
+  
+  /* Styles สำหรับ scrollbar */
+  .react-datepicker__year-dropdown::-webkit-scrollbar {
+    width: 6px !important;
+  }
+  
+  .react-datepicker__year-dropdown::-webkit-scrollbar-track {
+    background: #f1f1f1 !important;
+    border-radius: 10px !important;
+  }
+  
+  .react-datepicker__year-dropdown::-webkit-scrollbar-thumb {
+    background: #888 !important;
+    border-radius: 10px !important;
+  }
+  
+  .react-datepicker__year-dropdown::-webkit-scrollbar-thumb:hover {
+    background: #666 !important;
+  }

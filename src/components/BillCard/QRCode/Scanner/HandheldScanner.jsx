@@ -1,7 +1,9 @@
-import React, { useState, useEffect, useCallback, useRef } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Loader2 } from "lucide-react";
 import Swal from "sweetalert2";
 import BillDetailPopup from "../../Table/view/BillDetail/BillDetailPopup";
+import { billCardService } from "../../../../services/billCardService";
+import { directAccessService } from "../../../../services/directAccessService";
 
 const HandheldScanner = ({
   isOpen,
@@ -17,229 +19,279 @@ const HandheldScanner = ({
   const [showDetailPopup, setShowDetailPopup] = useState(false);
   const [selectedBill, setSelectedBill] = useState(null);
   const [isClosing, setIsClosing] = useState(false);
-  const [lastScanTime, setLastScanTime] = useState(0);
   const [isChangingSubInv, setIsChangingSubInv] = useState(false);
   const [isScanButtonActive, setIsScanButtonActive] = useState(false);
+  const [previousBills, setPreviousBills] = useState(bills);
+  const [autoSubmit, setAutoSubmit] = useState(true); // เพิ่ม state สำหรับการส่งอัตโนมัติ
 
   // Refs
   const bufferRef = useRef("");
   const timeoutRef = useRef(null);
   const scanTimeoutRef = useRef(null);
   const hiddenInputRef = useRef(null);
+  const latestQrData = useRef(null);
 
-  // Validate QR data with detailed logging
+  // Debug log bills data
+  useEffect(() => {
+    console.log("HandheldScanner props:", {
+      onSelectSubInv: typeof onSelectSubInv,
+      selectedSubInv,
+      isChangingSubInv,
+      billsChanged: bills !== previousBills,
+    });
+    
+    console.log('Bills Data:', bills?.map(bill => ({
+      id: bill.inventory_item_id,
+      partNo: bill.M_PART_NUMBER,
+      subInv: bill.M_SUBINV
+    })));
+  }, [onSelectSubInv, selectedSubInv, isChangingSubInv, bills, previousBills]);
+
+  // Validate QR data
   const validateQrData = (data) => {
-    console.log('Raw QR Data:', data);
-
-    // Handle string input
-    if (typeof data === 'string') {
-      try {
-        // Try parsing as JSON first
-        const parsedData = JSON.parse(data);
-        console.log('Successfully parsed string to JSON:', parsedData);
-        return validateQrData(parsedData);
-      } catch (e) {
-        // If not JSON, use as direct part number
-        if (/^[A-Za-z0-9\-_]+$/.test(data.trim())) {
-          console.log('Direct Part Number:', data.trim());
-          return {
-            partNumber: data.trim(),
-            subinventory: selectedSubInv
-          };
+    try {
+      console.log("Raw data from scanner:", data);
+      
+      // ถ้าไม่มีข้อมูลหรือเป็นสตริงว่าง
+      if (!data || (typeof data === 'string' && data.trim() === '')) {
+        throw new Error('ไม่พบข้อมูลจากการสแกน');
+      }
+      
+      let partNumber = null;
+      let subinventory = selectedSubInv || null;
+      let inventory_item_id = null;
+      
+      // กรณีที่ 1: ข้อมูลเป็น JSON
+      if (typeof data === 'string' && (data.startsWith('{') || data.includes('":"'))) {
+        try {
+          const parsedData = JSON.parse(data);
+          console.log('Parsed JSON data:', parsedData);
+          
+          partNumber = parsedData.partNumber || null;
+          subinventory = parsedData.subinventory || selectedSubInv || null;
+          inventory_item_id = parsedData.inventory_item_id || null;
+        } catch (jsonError) {
+          console.log("Failed to parse as JSON, treating as plain text:", jsonError);
         }
-        throw new Error('Invalid Part Number format');
       }
-    }
-
-    // Validate JSON data structure
-    if (!data || typeof data !== 'object') {
-      throw new Error('Invalid QR Code data');
-    }
-
-    // Check required fields
-    if (!data.partNumber) {
-      throw new Error('Part Number not found in QR Code');
-    }
-
-    // Validate Part Number format
-    const partNumberRegex = /^[A-Za-z0-9][A-Za-z0-9\-_]*[A-Za-z0-9]$/;
-    if (!partNumberRegex.test(data.partNumber.trim())) {
-      throw new Error('Invalid Part Number format');
-    }
-
-    // Validate Subinventory if present
-    if (data.subinventory) {
-      const subinvRegex = /^[A-Z0-9\-]+$/;
-      if (!subinvRegex.test(data.subinventory.trim())) {
-        throw new Error('Invalid Subinventory format');
+      
+      // กรณีที่ 2: ข้อมูลไม่ใช่ JSON หรือแปลง JSON ไม่ได้
+      if (!partNumber && !inventory_item_id) {
+        // ให้ถือว่าข้อมูลทั้งหมดเป็น part number
+        partNumber = data.toString().trim();
+        console.log("Treating input as direct part number:", partNumber);
       }
+      
+      // ถ้ายังไม่มีข้อมูลใดๆ ให้แจ้งข้อผิดพลาด
+      if (!partNumber && !inventory_item_id) {
+        throw new Error('ไม่สามารถระบุรหัสชิ้นส่วนหรือรหัสสินค้าได้');
+      }
+      
+      return {
+        partNumber,
+        subinventory,
+        inventory_item_id,
+        rawData: data // เก็บข้อมูลดิบไว้ด้วย
+      };
+    } catch (error) {
+      console.error('QR Data validation error:', error);
+      throw error;
     }
-
-    return {
-      partNumber: data.partNumber.trim(),
-      subinventory: data.subinventory?.trim() || selectedSubInv
-    };
   };
 
-  // Find matching bill with extensive logging
-  const findMatchingBill = useCallback(
-    (qrData) => {
-      console.log('Matching QR Data:', qrData);
-      console.log('Total Bills:', bills?.length);
-      console.log('Current Subinventory:', selectedSubInv);
-
-      if (!qrData?.partNumber || !Array.isArray(bills)) {
-        console.log('Invalid search input:', { qrData, billCount: bills?.length });
-        return null;
-      }
-
-      // Normalize search terms
-      const searchPartNumber = qrData.partNumber.trim().toUpperCase();
-      const searchSubInv = (qrData.subinventory || selectedSubInv).trim().toUpperCase();
-
-      console.log('Search Criteria:', {
-        partNumber: searchPartNumber,
-        subinventory: searchSubInv
-      });
-
-      // Find matching bills with detailed logging
-      const matchingBills = bills.filter((bill) => {
-        if (!bill?.M_PART_NUMBER || !bill?.M_SUBINV) {
-          console.log('Invalid bill data:', bill);
-          return false;
-        }
-
-        const billPartNumber = bill.M_PART_NUMBER.trim().toUpperCase();
-        const billSubInv = bill.M_SUBINV.trim().toUpperCase();
-
-        const isMatch = billPartNumber === searchPartNumber && 
-                        billSubInv === searchSubInv;
-
-        console.log('Comparing Bill:', {
-          billPartNumber,
-          billSubInv,
-          match: isMatch
-        });
-
-        return isMatch;
-      });
-
-      console.log('Matching Bills:', matchingBills);
-
-      if (matchingBills.length === 0) {
-        return null;
-      }
-
-      // Sort bills by date and prepare result
-      const sortedBills = matchingBills.sort((a, b) => {
-        const dateA = new Date(a.M_DATE);
-        const dateB = new Date(b.M_DATE);
-        return dateB - dateA;
-      });
-
-      const totalQty = matchingBills.reduce(
-        (sum, bill) => sum + Number(bill.M_QTY || 0),
-        0
-      );
-
-      const result = {
-        ...sortedBills[0],
-        allRelatedBills: sortedBills,
-        relatedBills: sortedBills,
-        totalQty,
-        billCount: matchingBills.length,
-        latestDate: new Date(sortedBills[0].M_DATE)
-      };
-
-      console.log('Final Matching Result:', result);
-      return result;
-    },
-    [bills, selectedSubInv]
-  );
-
-  // Process scanned data with comprehensive error handling
+  // Process scanned data
   const processScannedData = async (input) => {
-    console.log('Raw Scanned Input:', input);
-
-    // Debounce handling
-    const now = Date.now();
-    if (now - lastScanTime < 1000) {
-      console.log('Scan debounced - too soon');
+    if (!input) {
+      console.log("No input data to process");
       return;
     }
-    setLastScanTime(now);
-
+    
     try {
       setIsScanning(true);
-      setScanningMessage("Processing data...");
+      setScanningMessage("กำลังประมวลผลข้อมูล...");
+      console.log("Raw input data:", input);
 
-      // Clean and parse input
-      const cleanedInput = input.replace(/[\n\r]/g, '').trim();
-      console.log('Cleaned Input:', cleanedInput);
-
-      // Validate and find bill
-      const validatedData = validateQrData(cleanedInput);
-      console.log('Validated QR Data:', validatedData);
-
-      const foundBill = findMatchingBill(validatedData);
-      console.log('Found Bill:', foundBill);
-
-      if (foundBill) {
-        if (navigator.vibrate) navigator.vibrate(200);
-        setScanningMessage("Data found! Loading details...");
-        
-        setSelectedBill(foundBill);
-        setShowDetailPopup(true);
-      } else {
-        // Detailed not found handling
-        await Swal.fire({
-          title: "No Data Found",
-          html: `
-            <div class="space-y-2">
-              <p><strong>Part Number:</strong> ${validatedData.partNumber}</p>
-              <p><strong>Subinventory:</strong> ${validatedData.subinventory}</p>
-              <p class="text-sm text-gray-500 mt-4">Please verify the data exists in the system.</p>
-            </div>
-          `,
-          icon: "warning",
-          confirmButtonText: "OK"
+      // แสดงข้อมูลที่สแกนได้ทันทีเพื่อตรวจสอบ
+      const debugMsg = `ข้อมูลที่สแกนได้: ${typeof input === 'string' ? input : JSON.stringify(input)}`;
+      console.log(debugMsg);
+      
+      // Parse QR data
+      let qrData;
+      try {
+        qrData = validateQrData(input);
+        console.log('Validated QR Data:', qrData);
+        latestQrData.current = qrData;
+      } catch (parseError) {
+        // ถ้าแปลงไม่ได้ ให้ใช้ข้อมูลดิบทั้งหมดเป็น itemId
+        console.log("QR Parse error, using raw input:", parseError);
+        qrData = {
+          partNumber: input.toString().trim(),
+          subinventory: selectedSubInv,
+          inventory_item_id: input.toString().trim()
+        };
+        latestQrData.current = qrData;
+      }
+      
+      // ถ้า subinventory ไม่ตรงกับที่เลือกไว้ ให้ถามผู้ใช้
+      if (qrData.subinventory && qrData.subinventory !== selectedSubInv) {
+        console.log("Different subinventory detected:", qrData.subinventory);
+        const willChange = await Swal.fire({
+          title: "พบข้อมูลจาก Subinventory อื่น",
+          html: `Part Number นี้อยู่ใน ${qrData.subinventory}<br>ต้องการเปลี่ยน Subinventory หรือไม่?`,
+          icon: "question",
+          showCancelButton: true,
+          confirmButtonText: "เปลี่ยน",
+          cancelButtonText: "ยกเลิก",
+          confirmButtonColor: "#3085d6",
+          cancelButtonColor: "#d33",
         });
+
+        if (willChange.isConfirmed) {
+          setIsChangingSubInv(true);
+          setPreviousBills(bills);
+          setScanningMessage(`กำลังเปลี่ยน Subinventory เป็น ${qrData.subinventory}...`);
+          await onSelectSubInv(qrData.subinventory);
+        }
+      }
+      
+      // เรียกข้อมูลโดยตรงจาก API เหมือนเว็บ
+      console.log(`Fetching direct data: subinv=${qrData.subinventory || selectedSubInv}, id=${qrData.inventory_item_id || qrData.partNumber}`);
+      const billDetails = await directAccessService.getBillCards(
+        qrData.subinventory || selectedSubInv,
+        qrData.inventory_item_id || qrData.partNumber
+      );
+
+      if (billDetails && billDetails.length > 0) {
+        console.log("Found bill details:", billDetails.length, "records");
+        const sortedBills = [...billDetails].sort((a, b) => {
+          return new Date(b.M_DATE || 0) - new Date(a.M_DATE || 0);
+        });
+
+        // ตรวจสอบว่าเป็นข้อมูลออฟไลน์หรือไม่
+        const isOfflineData = billDetails[0]?._isOfflineData;
+
+        const billData = {
+          ...sortedBills[0],
+          allRelatedBills: sortedBills,
+          relatedBills: sortedBills,
+          totalQty: billDetails.reduce(
+            (sum, bill) => sum + Number(bill.M_QTY || 0),
+            0
+          ),
+          billCount: billDetails.length,
+          latestDate: new Date(sortedBills[0].M_DATE || new Date()),
+          _isOfflineData: isOfflineData
+        };
+
+        if (navigator.vibrate) navigator.vibrate(200);
+        setScanningMessage(isOfflineData 
+          ? "พบข้อมูลแต่ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้" 
+          : "พบข้อมูล! กำลังแสดงรายละเอียด..."
+        );
+
+        console.log('Setting selected bill:', billData);
+        await new Promise(resolve => {
+          setSelectedBill(billData);
+          setTimeout(resolve, 500);
+        });
+
+        setShowDetailPopup(true);
+        console.log("Popup visibility set to:", true);
+
+        if (isOfflineData) {
+          setTimeout(() => {
+            Swal.fire({
+              title: 'ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้',
+              text: 'แสดงข้อมูลเท่าที่มี อาจไม่ครบถ้วน',
+              icon: 'warning',
+              confirmButtonText: 'ตกลง'
+            });
+          }, 1000);
+        }
+      } else {
+        // แก้ไขส่วนนี้สำหรับกรณีไม่มีข้อมูล
+        console.log("No bill details found, creating empty bill structure");
+        
+        // สร้างข้อมูล bill data แบบว่างสำหรับแสดง popup
+        const emptyBillData = {
+          M_PART_NUMBER: qrData.partNumber || input.toString().trim(),
+          M_PART_DESCRIPTION: typeof qrData.description === 'string' ? 
+            qrData.description : 
+            (qrData.partNumber ? `Description for ${qrData.partNumber}` : ''),
+          M_SUBINV: qrData.subinventory || selectedSubInv,
+          M_DATE: new Date().toISOString(),
+          M_QTY: "0",
+          begin_qty: "0",
+          M_ID: "-",
+          TRANSACTION_TYPE_NAME: "-",
+          M_USER_NAME: "-",
+          inventory_item_id: qrData.inventory_item_id || "",
+          // เพิ่ม properties เพื่อให้รองรับการแสดงผลในหน้า detail
+          relatedBills: [],
+          allRelatedBills: [],
+          totalQty: 0,
+          billCount: 0,
+          latestDate: new Date(),
+          _isEmptyData: true  // เพิ่ม flag เพื่อระบุว่าเป็นข้อมูลว่างเปล่า
+        };
+
+        // แสดงข้อมูลแบบ debug
+        console.log("Created empty bill data:", emptyBillData);
+        if (navigator.vibrate) navigator.vibrate(200);
+
+        // ตั้งค่า selected bill และแสดง popup แม้จะไม่มีข้อมูล
+        await new Promise(resolve => {
+          setSelectedBill(emptyBillData);
+          setTimeout(resolve, 500);
+        });
+        
+        setShowDetailPopup(true);
+        console.log("Popup visibility set to true for empty data");
+        
+        // แสดง toast แจ้งเตือนเล็กน้อยว่าไม่พบข้อมูล (ไม่ต้องใช้ full alert)
+        setTimeout(() => {
+          Swal.fire({
+            title: 'ไม่พบข้อมูล',
+            text: 'ไม่พบข้อมูลการเคลื่อนไหวของสินค้า',
+            icon: 'info',
+            toast: true,
+            position: 'top-end',
+            showConfirmButton: false,
+            timer: 3000
+          });
+        }, 1000);
       }
     } catch (error) {
-      console.error('Complete Scan Processing Error:', error);
+      console.error("Scanning error:", error);
       await Swal.fire({
-        title: "Error",
-        text: error.message || "Unable to process scanned data",
+        title: "เกิดข้อผิดพลาด",
+        html: `ไม่สามารถประมวลผลข้อมูลได้<br><br>
+              <strong>สาเหตุ:</strong> ${error.message}<br>
+              <strong>ข้อมูลที่สแกน:</strong> ${input}`,
         icon: "error",
-        confirmButtonText: "OK"
+        confirmButtonText: "ตกลง",
+        confirmButtonColor: "#3085d6",
       });
     } finally {
-      setIsScanning(false);
-      setScanningMessage("Ready to scan");
-      bufferRef.current = '';
+      if (!showDetailPopup && !isChangingSubInv) {
+        setIsScanning(false);
+        setScanningMessage("พร้อมสแกน QR Code");
+      }
     }
   };
 
-  // Handle scanner input
+  // Handle scanner input - ปรับปรุงให้ทำงานโดยอัตโนมัติ
   useEffect(() => {
     const handleKeyPress = (e) => {
       if (!isOpen || !isScanButtonActive) return;
 
-      console.log('Key pressed:', {
-        key: e.key,
-        keyCode: e.keyCode,
-        currentBuffer: bufferRef.current
-      });
-
-      // Clear existing timeouts
       if (timeoutRef.current) clearTimeout(timeoutRef.current);
       if (scanTimeoutRef.current) clearTimeout(scanTimeoutRef.current);
 
-      // Handle Enter key
+      // ยังรองรับการกด Enter (เพื่อความเข้ากันได้กับระบบเดิม)
       if (e.key === 'Enter' || e.keyCode === 13) {
         e.preventDefault();
-        console.log('Enter key detected, processing buffer:', bufferRef.current);
-        
+        console.log("Enter key detected, processing buffer:", bufferRef.current);
         if (bufferRef.current) {
           processScannedData(bufferRef.current);
           bufferRef.current = '';
@@ -247,27 +299,40 @@ const HandheldScanner = ({
         return;
       }
 
-      // Add to buffer if valid character
       if (/[\w\d\-_.:{}[\]"']/.test(e.key)) {
         bufferRef.current += e.key;
+        console.log("Buffer updated:", bufferRef.current);
 
-        // Set timeout for processing
+        // ถ้าเปิดใช้งานการส่งอัตโนมัติ ให้ตรวจสอบรูปแบบข้อมูล
+        if (autoSubmit) {
+          // ตรวจสอบเงื่อนไขสำหรับส่งอัตโนมัติ
+          // 1. มีรูปแบบเป็น JSON
+          // 2. หรือมีความยาวมากพอที่จะเป็นข้อมูลที่สแกนได้
+          if (
+            (bufferRef.current.includes('{') && bufferRef.current.includes('}')) || 
+            (bufferRef.current.length >= 10 && !isScanning)  // สำหรับรหัสสินค้า 10 ตัวอักษรขึ้นไป
+          ) {
+            console.log("Auto-submit detected, processing data:", bufferRef.current);
+            processScannedData(bufferRef.current);
+            bufferRef.current = '';
+            return;
+          }
+        }
+
+        // ยังคงใช้ timeout เป็น fallback
         timeoutRef.current = setTimeout(() => {
           if (bufferRef.current) {
+            console.log("Processing buffer after timeout:", bufferRef.current);
             processScannedData(bufferRef.current);
             bufferRef.current = '';
           }
         }, 100);
 
-        // Set timeout for clearing buffer
         scanTimeoutRef.current = setTimeout(() => {
-          if (bufferRef.current) {
-            console.log('Scan timeout - clearing buffer:', bufferRef.current);
-            bufferRef.current = '';
-            setIsScanButtonActive(false);
-            setScanningMessage("Press scan button again");
-          }
-        }, 1000);
+          bufferRef.current = '';
+          setIsScanButtonActive(false);
+          setScanningMessage("กดปุ่มสแกนอีกครั้งเพื่อสแกนใหม่");
+        }, 5000);
       }
     };
 
@@ -277,29 +342,123 @@ const HandheldScanner = ({
       if (timeoutRef.current) clearTimeout(timeoutRef.current);
       if (scanTimeoutRef.current) clearTimeout(scanTimeoutRef.current);
     };
-  }, [isOpen, isScanButtonActive, processScannedData]);
+  }, [isOpen, isScanButtonActive, isScanning, autoSubmit]);
 
-  // Handle scan button press
+  // Effect to handle bills update after subinventory change
+  useEffect(() => {
+    const handleBillsUpdate = async () => {
+      if (isChangingSubInv && bills !== previousBills && latestQrData.current) {
+        try {
+          console.log(
+            "Attempting auto rescan with data:",
+            latestQrData.current
+          );
+          setScanningMessage("กำลังค้นหาข้อมูลใน Subinventory ใหม่...");
+          setIsScanning(true);
+
+          // รอให้ข้อมูลอัพเดทเสร็จ
+          await new Promise((resolve) => setTimeout(resolve, 1000));
+
+          // ใช้ directAccessService แทน findMatchingBill
+          const billDetails = await directAccessService.getBillCards(
+            selectedSubInv,
+            latestQrData.current.inventory_item_id || latestQrData.current.partNumber
+          );
+
+          if (billDetails && billDetails.length > 0) {
+            console.log("Found bill after subinventory change:", billDetails.length, "records");
+            if (navigator.vibrate) navigator.vibrate(200);
+            setScanningMessage("พบข้อมูล! กำลังแสดงรายละเอียด...");
+
+            const sortedBills = [...billDetails].sort((a, b) => {
+              return new Date(b.M_DATE || 0) - new Date(a.M_DATE || 0);
+            });
+
+            const billData = {
+              ...sortedBills[0],
+              allRelatedBills: sortedBills,
+              relatedBills: sortedBills,
+              totalQty: billDetails.reduce(
+                (sum, bill) => sum + Number(bill.M_QTY || 0),
+                0
+              ),
+              billCount: billDetails.length,
+              latestDate: new Date(sortedBills[0].M_DATE || new Date())
+            };
+
+            await new Promise(resolve => {
+              setSelectedBill(billData);
+              setTimeout(resolve, 500);
+            });
+
+            setShowDetailPopup(true);
+          } else {
+            console.log("No matching bill found in new subinventory");
+            await Swal.fire({
+              title: "ไม่พบข้อมูล",
+              html: `ไม่พบข้อมูล Bill ที่ตรงกับ QR Code ใน Subinventory ใหม่<br><br>
+                     <strong>ข้อมูลที่สแกนได้:</strong><br>
+                     Part Number: ${
+                       latestQrData.current.partNumber || "ไม่พบข้อมูล"
+                     }<br>
+                     Subinventory ใหม่: ${selectedSubInv || "ไม่พบข้อมูล"}`,
+              icon: "warning",
+              confirmButtonText: "ตกลง",
+              confirmButtonColor: "#3085d6",
+            });
+          }
+        } catch (error) {
+          console.error("Auto rescan error:", error);
+          await Swal.fire({
+            title: "เกิดข้อผิดพลาด",
+            text: `ไม่สามารถค้นหาข้อมูลได้: ${error.message}`,
+            icon: "error",
+            confirmButtonText: "ตกลง",
+            confirmButtonColor: "#3085d6",
+          });
+        } finally {
+          setIsScanning(false);
+          setIsChangingSubInv(false);
+          if (!showDetailPopup) {
+            setScanningMessage("พร้อมสแกน QR Code");
+          }
+        }
+      }
+    };
+
+    handleBillsUpdate();
+  }, [bills, previousBills, isChangingSubInv, selectedSubInv, showDetailPopup]);
+
+  // Handle scan button
   const handleScanButtonPress = () => {
     setIsScanButtonActive(true);
-    if (navigator.vibrate) {
-      navigator.vibrate(200);
-    }
+    if (navigator.vibrate) navigator.vibrate(200);
+    setScanningMessage("พร้อมรับข้อมูลสแกน (โปรดสแกน QR Code)");
     
     if (hiddenInputRef.current) {
       hiddenInputRef.current.focus();
     }
 
-    // Reset scan button after timeout
     setTimeout(() => {
-      if (!showDetailPopup) {
+      if (!showDetailPopup && isScanButtonActive) {
         setIsScanButtonActive(false);
-        setScanningMessage("Press scan button again");
+        setScanningMessage("กดปุ่มสแกนอีกครั้งเพื่อสแกนใหม่");
       }
-    }, 5000);
+    }, 30000); // timeout หลังจาก 30 วินาที
   };
 
-  // Handle close
+  // Clean up when component unmounts or closes
+  useEffect(() => {
+    if (!isOpen) {
+      setShowDetailPopup(false);
+      setSelectedBill(null);
+      setIsChangingSubInv(false);
+      setPreviousBills(bills);
+      latestQrData.current = null;
+    }
+  }, [isOpen, bills]);
+
+  // Handle closing
   const handleClose = () => {
     setIsClosing(true);
     setTimeout(() => {
@@ -315,6 +474,7 @@ const HandheldScanner = ({
   };
 
   const handleCloseDetail = () => {
+    console.log("Closing detail popup");
     setShowDetailPopup(false);
     setSelectedBill(null);
     setScannedData("");
@@ -323,11 +483,13 @@ const HandheldScanner = ({
 
   if (!isOpen && !showDetailPopup) return null;
 
+  console.log("Render state:", { isOpen, showDetailPopup, selectedBill: !!selectedBill });
+
   return (
     <>
       <div className="fixed inset-0 z-50">
         <div
-          className="absolute inset-0 bg-gray-900/45 backdrop-blur-sm transition-opacity"
+          className="absolute inset-0 bg-gray-900/45 transition-opacity"
           onClick={handleClose}
         />
 
@@ -337,16 +499,25 @@ const HandheldScanner = ({
               isClosing ? "animate__zoomOut" : "animate__zoomIn"
             }`}
           >
-            {/* Hidden input for scanner */}
+            {/* Hidden input for scanner - ปรับปรุงให้ทำงานอัตโนมัติ */}
             <input
               ref={hiddenInputRef}
               type="text"
               className="opacity-0 h-0 w-0 absolute"
               autoComplete="off"
+              onChange={(e) => {
+                // ถ้าเปิดใช้งานการส่งอัตโนมัติ และข้อมูลมีความยาวพอ
+                if (autoSubmit && e.target.value && e.target.value.length >= 5) {
+                  const scannedValue = e.target.value;
+                  console.log("Hidden input auto-processing:", scannedValue);
+                  processScannedData(scannedValue);
+                  e.target.value = '';
+                }
+              }}
               onKeyPress={(e) => {
                 if (e.key === 'Enter') {
                   const scannedValue = e.target.value;
-                  console.log('Scanned value:', scannedValue);
+                  console.log("Hidden input value from Enter:", scannedValue);
                   processScannedData(scannedValue);
                   e.target.value = '';
                 }
@@ -407,9 +578,22 @@ const HandheldScanner = ({
                   </div>
                 )}
 
+                {/* ตัวเลือกการส่งอัตโนมัติ */}
+                {/* <div className="pt-2">
+                  <label className="inline-flex items-center">
+                    <input
+                      type="checkbox"
+                      checked={autoSubmit}
+                      onChange={(e) => setAutoSubmit(e.target.checked)}
+                      className="form-checkbox h-4 w-4 text-blue-600 rounded"
+                    />
+                    <span className="ml-2 text-sm text-gray-700">ส่งข้อมูลอัตโนมัติ (ไม่ต้องกด Enter)</span>
+                  </label>
+                </div> */}
+
                 {/* Scan Button */}
                 <div className="pt-4 flex justify-center">
-                <button
+                  <button
                     onClick={handleScanButtonPress}
                     disabled={isScanning}
                     className={`flex items-center justify-center gap-2 px-6 py-3 rounded-xl
@@ -431,7 +615,9 @@ const HandheldScanner = ({
                 <div className="pt-4">
                   <div className="p-4 bg-blue-50 rounded-xl">
                     <p className="text-sm text-blue-700">
-                      กดปุ่มสแกนและใช้เครื่องสแกนเพื่อเริ่มต้น ระบบจะประมวลผลข้อมูลโดยอัตโนมัติ
+                      {autoSubmit 
+                        ? "กดปุ่มสแกนและใช้เครื่องสแกน QR Code ระบบจะประมวลผลโดยอัตโนมัติ ไม่ต้องกด Enter" 
+                        : "กดปุ่มสแกนและใช้เครื่องสแกน QR Code จากนั้นกด Enter เพื่อส่งข้อมูล"}
                     </p>
                   </div>
                 </div>
@@ -444,7 +630,11 @@ const HandheldScanner = ({
       {/* Bill Detail Popup */}
       {showDetailPopup && selectedBill && (
         <div className="fixed inset-0 z-[60]">
-          <BillDetailPopup bill={selectedBill} onClose={handleCloseDetail} />
+          {console.log("Rendering BillDetailPopup with bill:", selectedBill)}
+          <BillDetailPopup 
+            bill={selectedBill} 
+            onClose={handleCloseDetail} 
+          />
         </div>
       )}
     </>

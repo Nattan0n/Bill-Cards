@@ -3,6 +3,7 @@ import { MobileHeader } from "./Header";
 import { PartCard } from "../PartCard";
 import { PartInfo } from "../PartInfo";
 import { InventoryRecord } from "./InventoryRecord";
+import { MobileDateFilter } from "./MobileDateFilter";  // นำเข้า component ใหม่
 
 export const MobileView = ({
   bill,
@@ -40,44 +41,12 @@ export const MobileView = ({
             />
           </div>
 
-          {/* Date Filter */}
-          <div className="bg-white rounded-2xl shadow-sm overflow-hidden border border-gray-200">
-            <div className="p-4 border-b border-gray-100 bg-gradient-to-l from-blue-200 to-indigo-200 flex justify-between items-center">
-              <h3 className="font-semibold text-gray-800 flex items-center">
-                <span className="material-symbols-outlined mr-2 text-blue-600 p-2 bg-white rounded-full">
-                  date_range
-                </span>
-                Date Filter
-              </h3>
-              <button
-                onClick={handleExport}
-                className="inline-flex items-center px-3 py-1.5 bg-gradient-to-r from-indigo-600 via-blue-600 to-blue-700 text-white hover:from-blue-700 hover:via-blue-600 hover:to-indigo-700 text-xs font-medium rounded-lg transition-colors shadow-sm group"
-              >
-                <span className="material-symbols-outlined text-sm mr-1 group-hover:animate-bounce">
-                  file_download
-                </span>
-                Export
-              </button>
-            </div>
-            <div className="p-4 space-y-4">
-              {[
-                { label: "Start Date", field: "startDate" },
-                { label: "End Date", field: "endDate" },
-              ].map(({ label, field }) => (
-                <div key={field}>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    {label}
-                  </label>
-                  <input
-                    type="date"
-                    value={dateFilter[field]}
-                    onChange={(e) => onDateChange(field, e.target.value)}
-                    className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                  />
-                </div>
-              ))}
-            </div>
-          </div>
+          {/* Date Filter - แทนที่ด้วย MobileDateFilter component */}
+          <MobileDateFilter 
+            dateFilter={dateFilter}
+            onDateChange={onDateChange}
+            onExport={handleExport}
+          />
 
           {/* Inventory Records */}
           <div className="bg-white rounded-2xl shadow-sm overflow-hidden border border-gray-200">

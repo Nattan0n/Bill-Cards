@@ -8,7 +8,7 @@ export const getQRCodeDataUrl = async (bill) => {
       partNumber: bill.M_PART_NUMBER || bill.part_number,
       subinventory: bill.M_SUBINV || bill.secondary_inventory,
       inventory_item_id: bill.inventory_item_id || bill.inv_item_id,
-      description: bill.M_PART_DESCRIPTION || bill.part_description
+      // description: bill.M_PART_DESCRIPTION || bill.part_description
     };
 
     // Ensure all fields are strings and trimmed

@@ -42,9 +42,12 @@ const formatInventoryDate = (dateTimeStr) => {
   }
 };
 
-export const InventoryTable = ({ inventory }) => {
-  // Add sort state
-  const [sortDirection, setSortDirection] = useState('desc'); // 'asc' or 'desc'
+export const InventoryTable = ({ inventory, sortDirection = 'desc', onSortDirectionChange }) => {
+  // Add sort state if not provided by parent
+  const [localSortDirection, setLocalSortDirection] = useState(sortDirection);
+  
+  // Use provided sort direction or local state
+  const effectiveSortDirection = sortDirection || localSortDirection;
 
   // Sort inventory data
   const sortedInventory = useMemo(() => {
@@ -56,15 +59,28 @@ export const InventoryTable = ({ inventory }) => {
       
       if (!dateA || !dateB) return 0;
       
-      return sortDirection === 'asc' 
-        ? dateA.getTime() - dateB.getTime()
-        : dateB.getTime() - dateA.getTime();
+      // Compare timestamps first
+      const timeCompare = dateA.getTime() - dateB.getTime();
+      
+      // If timestamps are different, use them
+      if (timeCompare !== 0) {
+        return effectiveSortDirection === 'asc' ? timeCompare : -timeCompare;
+      }
+      
+      // If timestamps are the same, compare by document ID
+      const idA = Number(a.id || 0);
+      const idB = Number(b.id || 0);
+      return effectiveSortDirection === 'asc' ? idA - idB : idB - idA;
     });
-  }, [inventory, sortDirection]);
+  }, [inventory, effectiveSortDirection]);
 
   // Toggle sort direction
   const handleSortClick = () => {
-    setSortDirection(current => current === 'asc' ? 'desc' : 'asc');
+    const newDirection = effectiveSortDirection === 'asc' ? 'desc' : 'asc';
+    setLocalSortDirection(newDirection);
+    if (onSortDirectionChange) {
+      onSortDirectionChange(newDirection);
+    }
   };
 
   return (
@@ -80,7 +96,7 @@ export const InventoryTable = ({ inventory }) => {
           </span>
         </div>
         <div className="bg-white/30 px-3 py-1 rounded-lg">
-          <span className="text-white text-sm">Records : {inventory.length}</span>
+          <span className="text-white text-sm">Records : {inventory?.length || 0}</span>
         </div>
       </div>
 
@@ -99,7 +115,7 @@ export const InventoryTable = ({ inventory }) => {
                 >
                   <span className="text-sm text-gray-600">วันที่</span>
                   <span className="material-symbols-outlined text-gray-400 text-xl group-hover:text-blue-500">
-                    {sortDirection === 'asc' ? 'stat_1' : 'stat_minus_1'}
+                    {effectiveSortDirection === 'asc' ? 'stat_1' : 'stat_minus_1'}
                   </span>
                 </button>
               </th>

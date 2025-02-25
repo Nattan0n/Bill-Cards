@@ -41,6 +41,15 @@ const formatInventoryDate = (dateTimeStr) => {
     return "-";
   }
 };
+  // Function to determine document number or type name
+  const getDocumentReference = (item) => {
+    // If source is "source_nu", return m_type_name
+    if (item.eDocumentNo === "source_nu") {
+      return item.transaction_type || "-";
+    }
+    // Otherwise, return eDocumentNo (existing behavior)
+    return item.eDocumentNo || "-";
+  };
 
 export const InventoryRecord = ({ item }) => {
   if (!item) return null;
@@ -101,7 +110,7 @@ export const InventoryRecord = ({ item }) => {
       <div className="flex items-center justify-between text-sm">
         <div className="flex items-center gap-1 text-indigo-600 px-2 py-1 bg-indigo-50 rounded-lg">
           <span className="material-symbols-outlined text-base">description</span>
-          <span>{item.eDocumentNo || "-"}</span>
+          <span>{getDocumentReference(item)}</span>
         </div>
         <div className="flex items-center gap-1 text-yellow-600 px-2 py-1 bg-yellow-50 rounded-lg">
           <span className="material-symbols-outlined text-base">person</span>

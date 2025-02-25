@@ -392,21 +392,7 @@ const HandheldScanner = ({
             });
 
             setShowDetailPopup(true);
-          } else {
-            console.log("No matching bill found in new subinventory");
-            await Swal.fire({
-              title: "ไม่พบข้อมูล",
-              html: `ไม่พบข้อมูล Bill ที่ตรงกับ QR Code ใน Subinventory ใหม่<br><br>
-                     <strong>ข้อมูลที่สแกนได้:</strong><br>
-                     Part Number: ${
-                       latestQrData.current.partNumber || "ไม่พบข้อมูล"
-                     }<br>
-                     Subinventory ใหม่: ${selectedSubInv || "ไม่พบข้อมูล"}`,
-              icon: "warning",
-              confirmButtonText: "ตกลง",
-              confirmButtonColor: "#3085d6",
-            });
-          }
+          } 
         } catch (error) {
           console.error("Auto rescan error:", error);
           await Swal.fire({

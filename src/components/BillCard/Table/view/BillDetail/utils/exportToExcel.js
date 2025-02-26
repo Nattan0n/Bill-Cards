@@ -117,13 +117,17 @@ export const exportToExcel = async (
       const quantityIn = item.quantity_sold > 0 ? `+${Math.abs(item.quantity_sold)}` : "";
       const quantityOut = item.quantity_sold < 0 ? `-${Math.abs(item.quantity_sold)}` : "";
 
+      const documentReference = item.eDocumentNo === "source_nu" 
+        ? (item.transaction_type || "-") 
+        : (item.eDocumentNo || "-");
+        
       const row = worksheet.addRow([
         index + 1,
         formatDateForExcel(item.date_time),
         quantityIn,
         quantityOut,
         item.quantity_remaining,
-        item.eDocumentNo,
+        documentReference,
         item.username,
       ]);
 

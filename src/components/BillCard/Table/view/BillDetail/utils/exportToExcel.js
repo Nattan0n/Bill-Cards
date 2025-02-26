@@ -1,10 +1,12 @@
 import * as ExcelJS from "exceljs";
 import Swal from 'sweetalert2';
+import { parseDate } from "../../../../../../utils/dateUtils";
 
 export const exportToExcel = async (
   inventoryWithRemaining,
   bill,
-  dateFilter
+  dateFilter,
+  sortDirection = 'desc' // รับ sortDirection จาก UI
 ) => {
   try {
     if (inventoryWithRemaining.length === 0) {
@@ -18,28 +20,50 @@ export const exportToExcel = async (
       return;
     }
 
+    // เรียงข้อมูลก่อนส่งออกด้วยลอจิกเดียวกันกับในตาราง UI
+    const sortedInventory = [...inventoryWithRemaining].sort((a, b) => {
+      const dateA = parseDate(a.date_time);
+      const dateB = parseDate(b.date_time);
+      
+      if (!dateA || !dateB) return 0;
+      
+      // Compare timestamps first
+      const timeCompare = dateA.getTime() - dateB.getTime();
+      
+      // If timestamps are different, use them
+      if (timeCompare !== 0) {
+        return sortDirection === 'asc' ? timeCompare : -timeCompare;
+      }
+      
+      // If timestamps are the same, compare by document ID
+      const idA = Number(a.id || 0);
+      const idB = Number(b.id || 0);
+      return sortDirection === 'asc' ? idA - idB : idB - idA;
+    });
+
     // เพิ่มฟังก์ชันใหม่สำหรับจัดรูปแบบวันที่ใน Excel
-const formatDateForExcel = (dateTimeStr) => {
-  try {
-    if (!dateTimeStr) return "-";
-    const date = new Date(dateTimeStr);
-    if (isNaN(date.getTime())) return dateTimeStr;
-    
-    // จัดรูปแบบเป็น วัน/เดือน/ปี เวลา
-    return new Intl.DateTimeFormat('th-TH', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: false
-    }).format(date);
-    
-  } catch (error) {
-    console.error("Error formatting date for Excel:", error);
-    return dateTimeStr;
-  }
-};
+    const formatDateForExcel = (dateTimeStr) => {
+      try {
+        if (!dateTimeStr) return "-";
+        const date = new Date(dateTimeStr);
+        if (isNaN(date.getTime())) return dateTimeStr;
+        
+        // จัดรูปแบบเป็น วัน/เดือน/ปี เวลา
+        return new Intl.DateTimeFormat('th-TH', {
+          day: '2-digit',
+          month: '2-digit',
+          year: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit',
+          hour12: false
+        }).format(date);
+        
+      } catch (error) {
+        console.error("Error formatting date for Excel:", error);
+        return dateTimeStr;
+      }
+    };
+
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet("Inventory Log");
 
@@ -88,8 +112,8 @@ const formatDateForExcel = (dateTimeStr) => {
       cell.alignment = { vertical: "middle", horizontal: "center" };
     });
 
-    // Add data rows
-    inventoryWithRemaining.forEach((item, index) => {
+    // ใช้ข้อมูลที่เรียงแล้วในการสร้าง Excel
+    sortedInventory.forEach((item, index) => {
       const quantityIn = item.quantity_sold > 0 ? `+${Math.abs(item.quantity_sold)}` : "";
       const quantityOut = item.quantity_sold < 0 ? `-${Math.abs(item.quantity_sold)}` : "";
 

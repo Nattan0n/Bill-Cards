@@ -114,8 +114,8 @@ export const exportToExcel = async (
 
     // ใช้ข้อมูลที่เรียงแล้วในการสร้าง Excel
     sortedInventory.forEach((item, index) => {
-      const quantityIn = item.quantity_sold > 0 ? `+${Math.abs(item.quantity_sold)}` : "";
-      const quantityOut = item.quantity_sold < 0 ? `-${Math.abs(item.quantity_sold)}` : "";
+      const quantityIn = item.quantity_sold > 0 ? `+${Math.abs(item.quantity_sold)}` : "-";
+      const quantityOut = item.quantity_sold < 0 ? `-${Math.abs(item.quantity_sold)}` : "-";
 
       const documentReference = item.eDocumentNo === "source_nu" 
         ? (item.transaction_type || "-") 

@@ -62,10 +62,12 @@ const BillDetailPopup = ({ bill, onClose }) => {
         }
       } catch (error) {
         console.error("Error fetching bill details:", error);
+        
         Swal.fire({
           icon: "error",
           title: "เกิดข้อผิดพลาด",
-          text: "ไม่สามารถโหลดข้อมูล Bill Card ได้",
+          text: `ไม่สามารถโหลดข้อมูล Bill Card: ${error.message}`,
+          footer: `<a href="#">ติดต่อผู้ดูแลระบบ</a>`
         });
       } finally {
         setIsLoading(false);

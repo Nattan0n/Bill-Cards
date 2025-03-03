@@ -9,6 +9,42 @@ class BillCardService {
     this.CACHE_DURATION = 5 * 60 * 1000; // 5 minutes cache
     this.retryAttempts = 3;
     this.retryDelay = 1000;
+    this.logLevel = 'minimal'; // 'verbose', 'normal', 'minimal'
+  }
+
+  // เพิ่มฟังก์ชันสำหรับตั้งค่าระดับการแสดง log
+  setLogLevel(level) {
+    if (['verbose', 'normal', 'minimal'].includes(level)) {
+      this.logLevel = level;
+    }
+  }
+  
+  // ปรับปรุงฟังก์ชันการ log
+  log(level, ...args) {
+    const levelMap = {
+      'error': 0,
+      'warn': 1,
+      'info': 2,
+      'debug': 3
+    };
+    
+    const logLevelMap = {
+      'minimal': 0, // แสดงแค่ error เท่านั้น
+      'normal': 2,  // แสดงถึง info
+      'verbose': 3  // แสดงทั้งหมด
+    };
+    
+    if (levelMap[level] <= logLevelMap[this.logLevel]) {
+      if (level === 'error') {
+        console.error(...args);
+      } else if (level === 'warn') {
+        console.warn(...args);
+      } else if (level === 'info') {
+        console.log(...args);
+      } else if (level === 'debug') {
+        console.debug(...args);
+      }
+    }
   }
 
   async getBillCards(subInventory = null, itemId = null, { signal } = {}) {
@@ -21,6 +57,7 @@ class BillCardService {
     if (this.cache.has(cacheKey)) {
       const expirationTime = this.cacheExpiration.get(cacheKey);
       if (expirationTime > Date.now()) {
+        this.log('info', `Using cached data for ${cacheKey}`);
         return this.cache.get(cacheKey);
       }
       this.clearSpecificCache(cacheKey);
@@ -28,6 +65,7 @@ class BillCardService {
 
     // Return existing pending request
     if (this.pendingRequests.has(cacheKey)) {
+      this.log('info', `Using pending request for ${cacheKey}`);
       return this.pendingRequests.get(cacheKey);
     }
 
@@ -38,41 +76,82 @@ class BillCardService {
   }
 
   async fetchWithRetry(cacheKey, subInventory, itemId, signal, attempt = 1) {
+    const MAX_ATTEMPTS = 3;
     try {
       const data = await this.fetchBillCards(subInventory, itemId, signal);
-      this.updateCache(cacheKey, data);
-      return data;
-    } catch (error) {
-      console.error(`Attempt ${attempt} failed:`, error);
       
-      if (attempt < this.retryAttempts) {
-        await new Promise((resolve) => 
-          setTimeout(resolve, this.retryDelay * attempt)
-        );
+      if (data.length === 0 && attempt < MAX_ATTEMPTS) {
+        this.log('info', `Attempt ${attempt} returned no data, retrying...`);
+        await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
         return this.fetchWithRetry(cacheKey, subInventory, itemId, signal, attempt + 1);
       }
       
-      return []; // Return empty array on final failure
-    } finally {
-      this.pendingRequests.delete(cacheKey);
+      this.updateCache(cacheKey, data);
+      return data;
+    } catch (error) {
+      if (attempt < MAX_ATTEMPTS) {
+        this.log('info', `Attempt ${attempt} failed, retrying...`);
+        await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
+        return this.fetchWithRetry(cacheKey, subInventory, itemId, signal, attempt + 1);
+      }
+      
+      // สร้างข้อมูลจำลองเมื่อเกิด error
+      this.log('warn', `All ${MAX_ATTEMPTS} attempts failed, using fallback data`);
+      
+      // สร้างข้อมูลจำลองสำหรับแสดงใน UI
+      const fallbackData = [{
+        M_PART_NUMBER: itemId,
+        M_PART_DESCRIPTION: `ข้อมูลออฟไลน์ - ${itemId || "ไม่ระบุ"}`,
+        M_SUBINV: subInventory,
+        M_DATE: new Date().toISOString(),
+        M_QTY: "0",
+        begin_qty: "0",
+        TRANSACTION_TYPE_NAME: "OFFLINE MODE",
+        M_USER_NAME: "-",
+        M_SOURCE_REFERENCE: "-",
+        inventory_item_id: itemId,
+        _isOfflineData: true,
+        _errorType: error?.code || error?.response?.status || 'UNKNOWN',
+        _errorMessage: error?.message || "ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้"
+      }];
+      
+      // บันทึกข้อมูลจำลองเข้า cache
+      this.updateCache(cacheKey, fallbackData);
+      
+      return fallbackData;
     }
   }
 
   async fetchBillCards(subInventory, itemId, signal) {
     try {
+      // ใช้ encodeURIComponent เพื่อป้องกันปัญหา URL encoding
+      const encodedItemId = encodeURIComponent(itemId);
+      
+      this.log('info', `Fetching bill cards for ${subInventory}, item ID: ${itemId}`);
+      
       const response = await oracleApi.get('/api/oracle/bill-cards', {
         params: { 
           data: subInventory,
-          id: itemId 
+          id: encodedItemId 
         },
-        signal
+        signal,
       });
       
-      const billCardsData = response.data?.bill_cards || [];
-      return this.mapBillCardsData(billCardsData);
+      this.log('info', 'Full API Response:', {
+        billCardsCount: response.data?.bill_cards?.length,
+        totalCount: response.data?.total_count
+      });
+      
+      return this.mapBillCardsData(response.data?.bill_cards || []);
     } catch (error) {
-      console.error('Error fetching bill cards:', error);
-      throw error; // Re-throw to be caught by fetchWithRetry
+      // ลดขนาดของข้อมูล error ที่บันทึก
+      this.log('error', 'Bill Cards Fetch Error:', {
+        url: error.config?.url,
+        method: error.config?.method,
+        status: error.response?.status,
+        message: error.message
+      });
+      throw error;
     }
   }
 
@@ -100,6 +179,7 @@ class BillCardService {
   updateCache(cacheKey, data) {
     this.cache.set(cacheKey, data);
     this.cacheExpiration.set(cacheKey, Date.now() + this.CACHE_DURATION);
+    this.pendingRequests.delete(cacheKey);
   }
 
   clearSpecificCache(cacheKey) {
@@ -118,5 +198,7 @@ class BillCardService {
   }
 }
 
+// สร้าง instance และตั้งค่าระดับการแสดง log เป็น minimal
 export const billCardService = new BillCardService();
+billCardService.setLogLevel('minimal'); // ปรับเป็น 'verbose' เมื่อต้องการ debug
 export default BillCardService;

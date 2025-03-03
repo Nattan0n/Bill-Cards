@@ -3,13 +3,31 @@ import Logo from '../../../assets/images/thairung-logo.png';
 
 export const getQRCodeDataUrl = async (bill) => {
   try {
-    // Comprehensive QR Code data generation
+    // ตรวจสอบว่ามีภาษาไทยใน subinventory หรือไม่
+    const hasThaiChars = /[\u0E00-\u0E7F]/.test(bill.M_SUBINV || bill.secondary_inventory || "");
+    
+    // Comprehensive QR Code data generation with Base64 encoding for Thai text
     const qrData = {
+      // ข้อมูลหลัก
       partNumber: bill.M_PART_NUMBER || bill.part_number,
-      subinventory: bill.M_SUBINV || bill.secondary_inventory,
       inventory_item_id: bill.inventory_item_id || bill.inv_item_id,
-      // description: bill.M_PART_DESCRIPTION || bill.part_description
+      
+      // เก็บค่าดั้งเดิมไว้ (สำหรับความเข้ากันได้กับระบบเดิม)
+      subinventory: bill.M_SUBINV || bill.secondary_inventory,
+      
+      // เพิ่มการเข้ารหัส Base64 สำหรับข้อมูลภาษาไทย
+      subinventory_encoded: hasThaiChars 
+        ? btoa(encodeURIComponent(bill.M_SUBINV || bill.secondary_inventory || ""))
+        : null
     };
+
+    // ลบค่า null
+    if (!qrData.subinventory_encoded) {
+      delete qrData.subinventory_encoded;
+    }
+
+    // แสดงข้อมูลที่จะเข้ารหัสเป็น QR
+    console.log("QR data to encode:", qrData);
 
     // Ensure all fields are strings and trimmed
     Object.keys(qrData).forEach(key => {
@@ -33,7 +51,7 @@ export const getQRCodeDataUrl = async (bill) => {
       }
     );
 
-    // Canvas processing for adding logo (existing logic)
+    // Canvas processing for adding logo
     const canvas = document.createElement("canvas");
     const ctx = canvas.getContext("2d");
     const size = 500;

@@ -67,30 +67,41 @@ const TableRow = React.memo(({
     </td>
     <td className="p-4">
       <span className="inline-flex items-center px-2.5 py-1 rounded-lg bg-orange-50 text-base font-medium text-orange-600">
-        {bill.M_SUBINV}
+      <span className="material-symbols-outlined text-sm mr-1">
+                warehouse
+                </span>{bill.M_SUBINV}
       </span>
     </td>
-    {/* <td className="p-4">
-      <span className="inline-flex items-center px-2.5 py-1 rounded-lg bg-indigo-50 text-xs font-medium text-indigo-700">
-        {bill.TRANSACTION_TYPE_NAME}
-      </span>
-    </td>
-    <td className="p-4">
-      <span className="inline-flex items-center px-2.5 py-1 rounded-lg bg-blue-50 text-xs font-medium text-blue-700">
-        <span className="material-symbols-outlined text-base mr-1">calendar_today</span>
-        {bill.M_DATE}
-      </span>
-    </td>
+    {/* เซลล์สำหรับแสดง Stock Quantity */}
     <td className="p-4">
       <span className={`inline-flex items-center px-2.5 py-1 rounded-lg ${
-        bill.totalQty > 0 ? "bg-green-50 text-green-700" : "bg-red-50 text-red-700"
-      } text-xs font-medium`}>
-       <span className="material-symbols-outlined text-base mr-1">
-          {bill.totalQty > 0 ? "add_circle" : "remove_circle"}
+        parseFloat(String(bill.stk_qty).replace(/[^\d.-]/g, '') || 0) > 0 
+          ? "bg-green-50 text-green-500" 
+          : "bg-blue-50 text-blue-700"
+      } text-base font-medium`}>
+        <span className="material-symbols-outlined text-base mr-1">
+          {parseFloat(String(bill.stk_qty).replace(/[^\d.-]/g, '') || 0) > 0 ? "inventory_2" : "inventory_2"}
         </span>
-        {bill.totalQty}
+        {(() => {
+          // กำหนดค่าเริ่มต้นเป็น "0"
+          let displayValue = "0";
+          
+          // ถ้ามีค่า stk_qty และสามารถแปลงเป็นตัวเลขได้
+          if (bill.stk_qty) {
+            try {
+              const numericValue = String(bill.stk_qty).replace(/[^\d.-]/g, '');
+              if (numericValue && !isNaN(parseFloat(numericValue))) {
+                displayValue = numericValue;
+              }
+            } catch (e) {
+              console.error("Error formatting stk_qty:", e);
+            }
+          }
+          
+          return displayValue;
+        })()}
       </span>
-    </td> */}
+    </td>
     <td className="p-4">
       <button
         onClick={() => handleShowPopup(bill)}
@@ -103,7 +114,7 @@ const TableRow = React.memo(({
   </tr>
 ));
 
-const BillTable = ({ bills, startingIndex = 0, onSelectedRowsChange,isLoading = false }) => {
+const BillTable = ({ bills, startingIndex = 0, onSelectedRowsChange, isLoading = false }) => {
   const [selectedBill, setSelectedBill] = useState(null);
   const [showPopup, setShowPopup] = useState(false);
   const [selectedRows, setSelectedRows] = useState([]);
@@ -248,9 +259,7 @@ const BillTable = ({ bills, startingIndex = 0, onSelectedRowsChange,isLoading = 
                       <th className="p-4 text-sm font-semibold text-left text-gray-600 uppercase">Part No.</th>
                       <th className="p-4 text-sm font-semibold text-left text-gray-600 uppercase">Part Name</th>
                       <th className="p-4 text-sm font-semibold text-left text-gray-600 uppercase">SubInventory</th>
-                      {/* <th className="p-4 text-sm font-semibold text-left text-gray-600 uppercase">Transaction Type</th>
-                      <th className="p-4 text-sm font-semibold text-left text-gray-600 uppercase">Date</th>
-                      <th className="p-4 text-sm font-semibold text-left text-gray-600 uppercase">Quantity</th> */}
+                      <th className="p-4 text-sm font-semibold text-left text-gray-600 uppercase">Stock Qty</th>
                       <th className="p-4 text-sm font-semibold text-left text-gray-600 uppercase">Actions</th>
                     </tr>
                   </thead>

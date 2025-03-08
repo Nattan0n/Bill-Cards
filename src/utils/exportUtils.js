@@ -117,6 +117,25 @@ const formatWorksheet = (worksheet) => {
 };
 
 /**
+ * Helper function เพื่อแปลงค่า stk_qty ให้เป็นตัวเลขที่ถูกต้อง
+ */
+const formatStockQty = (stkQty) => {
+  if (stkQty === undefined || stkQty === null) return '0';
+  
+  try {
+    // ลบอักขระที่ไม่ใช่ตัวเลขหรือจุดทศนิยม
+    const numericValue = String(stkQty).replace(/[^\d.-]/g, '');
+    if (numericValue && !isNaN(parseFloat(numericValue))) {
+      return numericValue;
+    }
+  } catch (e) {
+    console.error("Error parsing stk_qty:", e);
+  }
+  
+  return '0';
+};
+
+/**
  * ส่งออกข้อมูล Part List
  */
 export const exportPartListToExcel = async (bills) => {
@@ -130,12 +149,13 @@ export const exportPartListToExcel = async (bills) => {
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet("Part List");
 
-    // กำหนดคอลัมน์
+    // กำหนดคอลัมน์ - เพิ่มคอลัมน์ Stock QTY
     worksheet.columns = [
       { header: "NO.", key: "no", width: 10 },
       { header: "Part No.", key: "partNumber", width: 15 },
       { header: "Part Name", key: "partDescription", width: 30 },
       { header: "SubInventory", key: "subinvean", width: 15 },
+      { header: "Stock QTY", key: "stockQty", width: 15 },
     ];
 
     // เพิ่มข้อมูล
@@ -145,6 +165,7 @@ export const exportPartListToExcel = async (bills) => {
         partNumber: bill.M_PART_NUMBER || '-',
         partDescription: bill.M_PART_DESCRIPTION || '-',
         subinvean: bill.M_SUBINV || '-',
+        stockQty: formatStockQty(bill.stk_qty),
       });
     });
 
@@ -180,93 +201,3 @@ export const exportPartListToExcel = async (bills) => {
     throw error;
   }
 };
-
-/**
- * ส่งออกรายละเอียด Bill Card
- */
-// export const exportBillDetailToExcel = async (inventory, partInfo, dateFilter) => {
-//   try {
-//     if (!inventory || inventory.length === 0) {
-//       throw new Error("ไม่มีข้อมูลที่จะส่งออก");
-//     }
-
-//     const loading = showLoading();
-
-//     const workbook = new ExcelJS.Workbook();
-//     const worksheet = workbook.addWorksheet("Bill Detail");
-
-//     // เพิ่มส่วนหัว
-//     worksheet.mergeCells('A1:G1');
-//     worksheet.getCell('A1').value = `รายละเอียดการเคลื่อนไหวสินค้า: ${partInfo.M_PART_NUMBER || '-'}`;
-//     worksheet.getCell('A1').font = { bold: true, size: 14 };
-//     worksheet.getCell('A1').alignment = { horizontal: 'center' };
-
-//     // ข้อมูลสินค้า
-//     worksheet.mergeCells('A2:G2');
-//     worksheet.getCell('A2').value = `รายละเอียด: ${partInfo.M_PART_DESCRIPTION || '-'}`;
-//     worksheet.getCell('A2').alignment = { horizontal: 'center' };
-
-//     // ช่วงวันที่
-//     worksheet.mergeCells('A3:G3');
-//     worksheet.getCell('A3').value = `วันที่: ${formatDateSafe(dateFilter.startDate)} ถึง ${formatDateSafe(dateFilter.endDate)}`;
-//     worksheet.getCell('A3').alignment = { horizontal: 'center' };
-
-//     // เว้น 1 บรรทัด
-//     worksheet.addRow([]);
-
-//     // กำหนดคอลัมน์
-//     worksheet.columns = [
-//       { header: "ลำดับ", key: "no", width: 10 },
-//       { header: "วันที่", key: "date", width: 15 },
-//       { header: "เลขที่เอกสาร", key: "docNo", width: 15 },
-//       { header: "ประเภทรายการ", key: "type", width: 20 },
-//       { header: "รับเข้า", key: "in", width: 12 },
-//       { header: "จ่ายออก", key: "out", width: 12 },
-//       { header: "คงเหลือ", key: "remaining", width: 12 }
-//     ];
-
-//     // เพิ่มข้อมูล
-//     inventory.forEach((item, index) => {
-//       worksheet.addRow({
-//         no: index + 1,
-//         date: formatDateSafe(item.date_time),
-//         docNo: item.plan_id || '-',
-//         type: item.transaction_type || '-',
-//         in: item.quantity_in || '',
-//         out: item.quantity_out || '',
-//         remaining: item.quantity_remaining || 0
-//       });
-//     });
-
-//     formatWorksheet(worksheet);
-
-//     // ส่งออกไฟล์
-//     const buffer = await workbook.xlsx.writeBuffer();
-//     const blob = new Blob([buffer], {
-//       type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-//     });
-//     const url = window.URL.createObjectURL(blob);
-//     const link = document.createElement("a");
-//     link.href = url;
-//     const currentDate = new Date().toISOString().split('T')[0];
-//     link.download = `Inventory_Log_${partInfo.M_PART_NUMBER}_${currentDate}.xlsx`;
-//     link.click();
-//     window.URL.revokeObjectURL(url);
-
-//     loading.close();
-//     await showAlert({
-//       title: 'สำเร็จ!',
-//       text: 'ส่งออกข้อมูลเรียบร้อยแล้ว',
-//       icon: 'success'
-//     });
-
-//   } catch (error) {
-//     console.error("Export failed:", error);
-//     await showAlert({
-//       title: 'เกิดข้อผิดพลาด!',
-//       text: error.message || 'เกิดข้อผิดพลาดในการส่งออกข้อมูล กรุณาลองใหม่อีกครั้ง',
-//       icon: 'error'
-//     });
-//     throw error;
-//   }
-// };

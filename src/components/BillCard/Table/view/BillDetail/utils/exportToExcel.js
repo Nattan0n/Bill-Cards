@@ -1,21 +1,40 @@
 import * as ExcelJS from "exceljs";
-import Swal from 'sweetalert2';
+import Swal from "sweetalert2";
 import { parseDate } from "../../../../../../utils/dateUtils";
+
+/**
+ * Helper function เพื่อแปลงค่า stk_qty ให้เป็นตัวเลขที่ถูกต้อง
+ */
+const formatStockQty = (stkQty) => {
+  if (stkQty === undefined || stkQty === null) return "0";
+
+  try {
+    // ลบอักขระที่ไม่ใช่ตัวเลขหรือจุดทศนิยม
+    const numericValue = String(stkQty).replace(/[^\d.-]/g, "");
+    if (numericValue && !isNaN(parseFloat(numericValue))) {
+      return numericValue;
+    }
+  } catch (e) {
+    console.error("Error parsing stk_qty:", e);
+  }
+
+  return "0";
+};
 
 export const exportToExcel = async (
   inventoryWithRemaining,
   bill,
   dateFilter,
-  sortDirection = 'desc' // รับ sortDirection จาก UI
+  sortDirection = "desc" // รับ sortDirection จาก UI
 ) => {
   try {
     if (inventoryWithRemaining.length === 0) {
       await Swal.fire({
-        title: 'ไม่พบข้อมูล',
-        text: 'ไม่มีข้อมูลที่จะส่งออก',
-        icon: 'warning',
-        confirmButtonText: 'ตกลง',
-        confirmButtonColor: '#3085d6'
+        title: "ไม่พบข้อมูล",
+        text: "ไม่มีข้อมูลที่จะส่งออก",
+        icon: "warning",
+        confirmButtonText: "ตกลง",
+        confirmButtonColor: "#3085d6",
       });
       return;
     }
@@ -24,21 +43,21 @@ export const exportToExcel = async (
     const sortedInventory = [...inventoryWithRemaining].sort((a, b) => {
       const dateA = parseDate(a.date_time);
       const dateB = parseDate(b.date_time);
-      
+
       if (!dateA || !dateB) return 0;
-      
+
       // Compare timestamps first
       const timeCompare = dateA.getTime() - dateB.getTime();
-      
+
       // If timestamps are different, use them
       if (timeCompare !== 0) {
-        return sortDirection === 'asc' ? timeCompare : -timeCompare;
+        return sortDirection === "asc" ? timeCompare : -timeCompare;
       }
-      
+
       // If timestamps are the same, compare by document ID
       const idA = Number(a.id || 0);
       const idB = Number(b.id || 0);
-      return sortDirection === 'asc' ? idA - idB : idB - idA;
+      return sortDirection === "asc" ? idA - idB : idB - idA;
     });
 
     // เพิ่มฟังก์ชันใหม่สำหรับจัดรูปแบบวันที่ใน Excel
@@ -47,17 +66,16 @@ export const exportToExcel = async (
         if (!dateTimeStr) return "-";
         const date = new Date(dateTimeStr);
         if (isNaN(date.getTime())) return dateTimeStr;
-        
+
         // จัดรูปแบบเป็น วัน/เดือน/ปี เวลา
-        return new Intl.DateTimeFormat('th-TH', {
-          day: '2-digit',
-          month: '2-digit',
-          year: 'numeric',
-          hour: '2-digit',
-          minute: '2-digit',
-          hour12: false
+        return new Intl.DateTimeFormat("th-TH", {
+          day: "2-digit",
+          month: "2-digit",
+          year: "numeric",
+          hour: "2-digit",
+          minute: "2-digit",
+          hour12: false,
         }).format(date);
-        
       } catch (error) {
         console.error("Error formatting date for Excel:", error);
         return dateTimeStr;
@@ -71,13 +89,25 @@ export const exportToExcel = async (
     const titleRow = worksheet.addRow(["Part Details"]);
     titleRow.font = { bold: true, size: 14 };
 
-    // Add part information
+    // เตรียมค่า Stock QTY ที่จะแสดงในรายละเอียด
+    // ใช้ค่าจาก bill.stk_qty หรือค่าจาก inventoryWithRemaining[0]._apiStockQty ถ้ามี
+    const stockQty = formatStockQty(
+      bill.stk_qty ||
+        inventoryWithRemaining[0]?._apiStockQty ||
+        inventoryWithRemaining[0]?._calculatedTotal ||
+        "0"
+    );
+
+    // Add part information with Stock QTY
     worksheet.addRow(["Part Number:", bill.M_PART_NUMBER]);
     worksheet.addRow(["Description:", bill.M_PART_DESCRIPTION]);
-    worksheet.addRow(["Customer:", bill.M_SUBINV]);
+    worksheet.addRow(["Subinventory:", bill.M_SUBINV]);
+    worksheet.addRow(["Stock QTY:", stockQty]); // เพิ่มแถวข้อมูล Stock QTY
     worksheet.addRow([
       "Date Range:",
-      `${formatDateForExcel(dateFilter.startDate)} to ${formatDateForExcel(dateFilter.endDate)}`,
+      `${formatDateForExcel(dateFilter.startDate)} to ${formatDateForExcel(
+        dateFilter.endDate
+      )}`,
     ]);
     worksheet.addRow([]); // Empty row for spacing
 
@@ -112,15 +142,22 @@ export const exportToExcel = async (
       cell.alignment = { vertical: "middle", horizontal: "center" };
     });
 
+    // Style Stock QTY row to highlight it
+    const stockQtyRow = worksheet.getRow(4);
+    stockQtyRow.getCell(2).font = { bold: true, color: { argb: "006100" } };
+
     // ใช้ข้อมูลที่เรียงแล้วในการสร้าง Excel
     sortedInventory.forEach((item, index) => {
-      const quantityIn = item.quantity_sold > 0 ? `+${Math.abs(item.quantity_sold)}` : "-";
-      const quantityOut = item.quantity_sold < 0 ? `-${Math.abs(item.quantity_sold)}` : "-";
+      const quantityIn =
+        item.quantity_sold > 0 ? `+${Math.abs(item.quantity_sold)}` : "-";
+      const quantityOut =
+        item.quantity_sold < 0 ? `-${Math.abs(item.quantity_sold)}` : "-";
 
-      const documentReference = item.eDocumentNo === "source_nu" 
-        ? (item.transaction_type || "-") 
-        : (item.eDocumentNo || "-");
-        
+      const documentReference =
+        item.eDocumentNo === "source_nu"
+          ? item.transaction_type || "-"
+          : item.eDocumentNo || "-";
+
       const row = worksheet.addRow([
         index + 1,
         formatDateForExcel(item.date_time),
@@ -133,10 +170,10 @@ export const exportToExcel = async (
 
       // Conditional coloring
       if (item.quantity_sold > 0) {
-        row.getCell(3).font = { color: { argb: 'FF008000' } }; // Green for Quantity In
+        row.getCell(3).font = { color: { argb: "FF008000" } }; // Green for Quantity In
       }
       if (item.quantity_sold < 0) {
-        row.getCell(4).font = { color: { argb: 'FFFF0000' } }; // Red for Quantity Out
+        row.getCell(4).font = { color: { argb: "FFFF0000" } }; // Red for Quantity Out
       }
 
       // Style data cells
@@ -158,12 +195,12 @@ export const exportToExcel = async (
 
     // Show loading while generating file
     Swal.fire({
-      title: 'กำลังสร้างไฟล์',
-      html: 'กรุณารอสักครู่...',
+      title: "กำลังสร้างไฟล์",
+      html: "กรุณารอสักครู่...",
       allowOutsideClick: false,
       didOpen: () => {
         Swal.showLoading();
-      }
+      },
     });
 
     // Generate and download file
@@ -182,24 +219,23 @@ export const exportToExcel = async (
 
     // Close loading and show success message
     await Swal.fire({
-      title: 'สำเร็จ!',
-      text: 'ส่งออกข้อมูลเรียบร้อยแล้ว',
-      icon: 'success',
-      confirmButtonText: 'ตกลง',
-      confirmButtonColor: '#3085d6'
+      title: "สำเร็จ!",
+      text: "ส่งออกข้อมูลเรียบร้อยแล้ว",
+      icon: "success",
+      confirmButtonText: "ตกลง",
+      confirmButtonColor: "#3085d6",
     });
-
   } catch (error) {
     console.error("Export failed:", error);
     console.log("Error details:", error.message);
     console.log("Data causing error:", inventoryWithRemaining);
-    
+
     await Swal.fire({
-      title: 'เกิดข้อผิดพลาด!',
-      text: 'เกิดข้อผิดพลาดในการส่งออกข้อมูล กรุณาลองใหม่อีกครั้ง',
-      icon: 'error',
-      confirmButtonText: 'ตกลง',
-      confirmButtonColor: '#3085d6'
+      title: "เกิดข้อผิดพลาด!",
+      text: "เกิดข้อผิดพลาดในการส่งออกข้อมูล กรุณาลองใหม่อีกครั้ง",
+      icon: "error",
+      confirmButtonText: "ตกลง",
+      confirmButtonColor: "#3085d6",
     });
   }
 };

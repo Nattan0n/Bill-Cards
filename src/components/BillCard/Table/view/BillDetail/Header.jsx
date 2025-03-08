@@ -1,7 +1,7 @@
 // components/BillCard/view/BillDetail/Header.jsx
 import React from "react";
 
-export const Header = ({ recordCount, onClose }) => (
+export const Header = ({ recordCount, totalRecordCount, onClose }) => (
   <div className="bg-gradient-to-r from-indigo-600 via-blue-600 to-blue-800 rounded-t-2xl px-6 py-4 shadow-lg animate-gradient">
     <div className="flex items-center justify-between">
       <div className="flex items-center">
@@ -16,7 +16,7 @@ export const Header = ({ recordCount, onClose }) => (
             </span>
           </h2>
           <p className="text-xs text-blue-100 mt-0.5">
-          View partial bill card information and inventory history.
+            View partial bill card information and inventory history.
           </p>
         </div>
       </div>

@@ -43,7 +43,7 @@ const Card = ({
             onChange={(e) => handleSelectRow(index, e)}
             className="peer relative h-6 w-6 cursor-pointer appearance-none rounded-lg border-2 border-gray-300 bg-white 
             checked:border-blue-500 checked:bg-blue-500 transition-all duration-200 
-            hover:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-200"
+            hover:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-transparent"
           />
           <span className="pointer-events-none absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 
             text-white opacity-0 transition-opacity peer-checked:opacity-100">
@@ -83,15 +83,44 @@ const Card = ({
               {bill.M_PART_DESCRIPTION}
             </p>
             
-            {/* SubInventory Tag */}
-            <div className="flex items-center">
-              <span className="inline-flex items-center px-3 py-1 
+            {/* SubInventory and Stock Qty */}
+            <div className="flex items-center space-x-2">
+              <span className="inline-flex items-center px-3 py-1  
                 bg-orange-50 text-orange-600 rounded-full text-xs font-medium 
                 group-hover:bg-orange-100 transition-colors">
                 <span className="material-symbols-outlined text-sm mr-1">
-                  inventory_2
+                warehouse
                 </span>
                 {bill.M_SUBINV}
+              </span>
+              
+              {/* Stock Quantity */}
+              <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium 
+                ${Number(bill.stk_qty) > 0 
+                  ? "bg-green-50 text-green-600 group-hover:bg-green-100" 
+                  : "bg-blue-50 text-blue-600 group-hover:bg-blue-100"} 
+                transition-colors`}>
+                <span className="material-symbols-outlined text-sm mr-1">
+                  {Number(bill.stk_qty) > 0 ? "inventory_2" : "inventory_2"}
+                </span>
+                {(() => {
+                  // กำหนดค่าเริ่มต้นเป็น "0"
+                  let displayValue = "0";
+                  
+                  // ถ้ามีค่า stk_qty และสามารถแปลงเป็นตัวเลขได้
+                  if (bill.stk_qty) {
+                    try {
+                      const numericValue = String(bill.stk_qty).replace(/[^\d.-]/g, '');
+                      if (numericValue && !isNaN(parseFloat(numericValue))) {
+                        displayValue = numericValue;
+                      }
+                    } catch (e) {
+                      console.error("Error formatting stk_qty:", e);
+                    }
+                  }
+                  
+                  return displayValue;
+                })()}
               </span>
             </div>
           </div>

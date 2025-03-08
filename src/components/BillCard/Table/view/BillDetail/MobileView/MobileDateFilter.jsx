@@ -7,8 +7,15 @@ import { registerLocale } from "react-datepicker";
 
 registerLocale("th", th);
 
-export const MobileDateFilter = ({ dateFilter, onDateChange, onExport }) => {
-  // Helper function to format date for display - เหมือนกับใน DateFilter.jsx
+export const MobileDateFilter = ({
+  dateFilter,
+  onDateChange,
+  onExport,
+  onFilterReset,
+  onShowLatestMonth,
+  isFiltered
+}) => {
+  // Helper function to format date for display
   const formatDisplayDate = (date) => {
     if (!date) return "";
     return new Date(date).toLocaleDateString("th-TH", {
@@ -19,71 +26,118 @@ export const MobileDateFilter = ({ dateFilter, onDateChange, onExport }) => {
   };
 
   return (
-    <div className="bg-white rounded-2xl shadow-sm overflow-hidden border border-gray-200">
+    <div className="bg-white rounded-2xl shadow-sm overflow-hidden border border-gray-100">
+      {/* Header - ปรับตาม Design ใน Image 2 */}
       <div className="p-4 border-b border-gray-100 bg-gradient-to-l from-blue-200 to-indigo-200 flex justify-between items-center">
-        <h3 className="font-semibold text-gray-800 flex items-center">
+        <div className="flex items-center">
           <span className="material-symbols-outlined mr-2 text-blue-600 p-2 bg-white rounded-full">
             date_range
           </span>
-          Date Filter
-        </h3>
-        <button
-          onClick={onExport}
-          className="inline-flex items-center px-3 py-1.5 bg-gradient-to-r from-indigo-600 via-blue-600 to-blue-700 text-white hover:from-blue-700 hover:via-blue-600 hover:to-indigo-700 text-xs font-medium rounded-lg transition-colors shadow-sm group"
-        >
-          <span className="material-symbols-outlined text-sm mr-1 group-hover:animate-bounce">
-            file_download
+          <span className="[text-shadow:_0_8px_8px_rgb(99_102_241_/_0.8)] font-semibold text-white flex items-center">Date Filter</span>
+        </div>
+        {isFiltered && (
+          <span className="text-xs bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded-full">
+            กรอง
           </span>
-          Export
-        </button>
+        )}
       </div>
-      
-      <div className="p-4 space-y-4">
-        {[
-          { label: "Start Date", field: "startDate" },
-          { label: "End Date", field: "endDate" },
-        ].map(({ label, field }) => (
-          <div key={field}>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              {label}
-            </label>
-            <DatePicker
-              selected={
-                dateFilter[field] ? new Date(dateFilter[field]) : null
-              }
-              onChange={(date) =>
-                onDateChange(field, date?.toISOString().split("T")[0] || "")
-              }
-              locale="th"
-              dateFormat="dd/MM/yyyy"
-              showMonthDropdown
-              showYearDropdown
-              dropdownMode="select"
-              placeholderText="วัน/เดือน/ปี"
-              calendarClassName="custom-datepicker-calendar"
-              popperClassName="custom-datepicker-popper" 
-              popperPlacement="auto"
-              showPopperArrow={false}
-              customInput={
-                <div className="relative w-full">
-                  <input
-                    type="text"
-                    value={formatDisplayDate(dateFilter[field])}
-                    className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg cursor-pointer pr-10 hover:border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    readOnly
-                    placeholder="วัน/เดือน/ปี"
-                  />
-                  <span className="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">
-                    calendar_month
-                  </span>
-                </div>
-              }
-            />
+
+      {/* Warning Message */}
+      {/* {isFiltered && (
+        <div className="px-3 py-2 bg-yellow-50">
+          <div className="flex items-start gap-2">
+            <span className="material-symbols-outlined text-yellow-600">warning</span>
+            <p className="text-sm text-yellow-700">
+              กดปุ่ม "เดือนล่าสุด" เพื่อดูเฉพาะเดือนล่าสุด หรือ
+              กดปุ่ม "ทั้งหมด" เพื่อยกเลิกการกรอง
+            </p>
           </div>
-        ))}
+        </div>
+      )} */}
+
+      {/* Date Fields */}
+      <div className="p-3">
+        <div className="grid grid-cols-2 gap-3">
+          {[
+            { label: "Start Date", field: "startDate" },
+            { label: "End Date", field: "endDate" },
+          ].map(({ label, field }) => (
+            <div key={field}>
+              <label className="block text-xs font-medium text-gray-500 mb-1">
+                {label}
+              </label>
+              <DatePicker
+                selected={
+                  dateFilter[field] ? new Date(dateFilter[field]) : null
+                }
+                onChange={(date) =>
+                  onDateChange(field, date?.toISOString().split("T")[0] || "")
+                }
+                locale="th"
+                dateFormat="dd/MM/yyyy"
+                showMonthDropdown
+                showYearDropdown
+                dropdownMode="select"
+                placeholderText="วัน/เดือน/ปี"
+                calendarClassName="custom-datepicker-calendar"
+                popperClassName="custom-datepicker-popper" 
+                popperPlacement="auto"
+                showPopperArrow={false}
+                customInput={
+                  <div className="relative w-full">
+                    <input
+                      type="text"
+                      value={formatDisplayDate(dateFilter[field])}
+                      className={`w-full px-3 py-2 text-sm bg-gray-50 border
+                        ${isFiltered ? "border-yellow-300" : "border-gray-200"} 
+                        rounded-lg cursor-pointer pr-8
+                        hover:border-blue-300 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-transparent`}
+                      readOnly
+                      placeholder="วัน/เดือน/ปี"
+                    />
+                    <span className="material-symbols-outlined absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 text-sm">
+                      calendar_month
+                    </span>
+                  </div>
+                }
+              />
+            </div>
+          ))}
+        </div>
+
+        {/* Action Buttons - ปรับตาม Design ใน Image 2 */}
+        <div className="grid grid-cols-3 gap-2 mt-3">
+          <button
+            onClick={() => onShowLatestMonth()}
+            className="flex items-center justify-center px-2 py-2 bg-indigo-100 hover:bg-indigo-200 text-indigo-700 text-sm font-medium rounded-lg transition-colors"
+          >
+            <span className="material-symbols-outlined text-sm mr-1">last_page</span>
+            <span>เดือนล่าสุด</span>
+          </button>
+          
+          <button
+            onClick={() => onFilterReset()}
+            className={`flex items-center justify-center px-2 py-2 
+              ${isFiltered 
+                ? "bg-yellow-100 hover:bg-yellow-200 text-yellow-700" 
+                : "bg-blue-100 hover:bg-blue-200 text-blue-700"}
+              text-sm font-medium rounded-lg transition-colors`}
+          >
+            <span className="material-symbols-outlined text-sm mr-1">filter_alt_off</span>
+            <span>ทั้งหมด</span>
+          </button>
+          
+          <button
+            onClick={onExport}
+            className="flex items-center justify-center px-2 py-2 bg-gradient-to-r from-indigo-600 to-blue-600 text-white text-sm font-medium rounded-lg transition-all hover:shadow-md"
+          >
+            <span className="material-symbols-outlined text-sm mr-1">download</span>
+            <span>Export</span>
+          </button>
+        </div>
       </div>
-      
-      {/* Datepicker Custom Styles (เหมือนกับใน DateFilter.jsx) */}
+
+      {/* Datepicker Custom Styles (ยังคงเดิม) */}
       <style>{`
         .custom-datepicker-calendar {
           font-family: 'Kanit', sans-serif !important;

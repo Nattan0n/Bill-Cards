@@ -193,6 +193,7 @@ const BillCard = () => {
         relatedBills: sortedBills,
         latestDate: parseDate(sortedBills[0].M_DATE),
         allRelatedBills: allRelatedBills,
+        stk_qty: sortedBills[0].stk_qty || "0" ,
       });
     });
 

@@ -106,6 +106,7 @@ class BillCardService {
         M_DATE: new Date().toISOString(),
         M_QTY: "0",
         begin_qty: "0",
+        stk_qty: "0", // เพิ่มฟิลด์ stk_qty เข้าไปในข้อมูลจำลอง
         TRANSACTION_TYPE_NAME: "OFFLINE MODE",
         M_USER_NAME: "-",
         M_SOURCE_REFERENCE: "-",
@@ -156,24 +157,42 @@ class BillCardService {
   }
 
   mapBillCardsData(billCardsData) {
-    return billCardsData.map((item) => ({
-      M_PART_NUMBER: item.m_part_number || "",
-      M_PART_DESCRIPTION: item.m_part_description || "",
-      M_SUBINV: item.m_subinv || "",
-      M_DATE: item.m_date || "",
-      M_QTY: item.m_qty || "0",
-      begin_qty: item.begin_qty || "0",
-      M_ID: item.m_id || "",
-      M_SOURCE_ID: item.m_source_id || "",
-      M_SOURCE_NAME: item.m_source_name || "",
-      M_SOURCE_LINE_ID: item.m_source_line_id || "",
-      M_TYPE_ID: item.m_type_id || "",
-      TRANSACTION_TYPE_NAME: item.m_type_name || "",
-      M_USER_NAME: item.user_name || "-",
-      M_SOURCE_REFERENCE: item.source_reference || "-",
-      m_date_begin: item.m_date_begin || "",
-      inventory_item_id: item.inventory_item_id || "",
-    }));
+    return billCardsData.map((item) => {
+      // แปลงค่า stk_qty ถ้ามี
+      let stockQty = "0"; // กำหนดค่าเริ่มต้นเป็น "0"
+      
+      // ถ้ามีค่า stk_qty และสามารถแปลงเป็นตัวเลขได้
+      if (item.stk_qty) {
+        try {
+          const numericValue = String(item.stk_qty).replace(/[^\d.-]/g, '');
+          if (numericValue && !isNaN(parseFloat(numericValue))) {
+            stockQty = numericValue;
+          }
+        } catch (e) {
+          console.error("Error parsing stk_qty in billCardService:", e);
+        }
+      }
+      
+      return {
+        M_PART_NUMBER: item.m_part_number || "",
+        M_PART_DESCRIPTION: item.m_part_description || "",
+        M_SUBINV: item.m_subinv || "",
+        M_DATE: item.m_date || "",
+        M_QTY: item.m_qty || "0",
+        begin_qty: item.begin_qty || "0",
+        M_ID: item.m_id || "",
+        M_SOURCE_ID: item.m_source_id || "",
+        M_SOURCE_NAME: item.m_source_name || "",
+        M_SOURCE_LINE_ID: item.m_source_line_id || "",
+        M_TYPE_ID: item.m_type_id || "",
+        TRANSACTION_TYPE_NAME: item.m_type_name || "",
+        M_USER_NAME: item.user_name || "-",
+        M_SOURCE_REFERENCE: item.source_reference || "-",
+        m_date_begin: item.m_date_begin || "",
+        inventory_item_id: item.inventory_item_id || "",
+        stk_qty: stockQty, // ใช้ค่าที่แปลงแล้ว
+      };
+    });
   }
 
   updateCache(cacheKey, data) {

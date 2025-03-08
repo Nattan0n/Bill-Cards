@@ -1,8 +1,19 @@
-// 1. src/services/axios.js
+// src/utils/axios.js
 import axios from 'axios';
 
+// สร้าง instance สำหรับ API ที่ server 129.200.6.51 (inventory API)
+export const inventoryApi = axios.create({
+    baseURL: 'http://129.200.6.52/laravel_oracle_api/public',
+    // baseURL: 'http://129.200.6.51/laravel_oracle_api/public',
+    headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'X-Requested-With': 'XMLHttpRequest'
+    }
+});
+
+// สร้าง instance สำหรับ API ที่ server 129.200.6.52 (bill card API)
 export const oracleApi = axios.create({
-    // baseURL: 'http://129.200.6.52/laravel_oracle11g_prod_api/public',
     baseURL: 'http://129.200.6.52/laravel_oracle_api/public',
     headers: {
         'Content-Type': 'application/json',
@@ -11,6 +22,7 @@ export const oracleApi = axios.create({
     }
 });
 
+// สร้าง instance สำหรับ API ที่ server 129.200.6.50 (image API)
 export const imageApi = axios.create({
     baseURL: 'http://129.200.6.50:83',
     headers: {
@@ -22,6 +34,7 @@ export const imageApi = axios.create({
     }
 });
 
+// ฟังก์ชันจัดการ error สำหรับทุก API
 const handleApiError = (error) => {
     if (error.code === 'ERR_NETWORK') {
         console.error('Network error:', error);
@@ -31,6 +44,12 @@ const handleApiError = (error) => {
     }
     return Promise.reject(error);
 };
+
+// เพิ่ม interceptors สำหรับทุก API
+inventoryApi.interceptors.response.use(
+    response => response,
+    handleApiError
+);
 
 oracleApi.interceptors.response.use(
     response => response,
@@ -42,6 +61,7 @@ imageApi.interceptors.response.use(
     handleApiError
 );
 
+// ฟังก์ชันสำหรับดึงรูปภาพ
 export const getImageUrl = async (identifier) => {
     try {
         const response = await imageApi.get(`/images/${identifier}`);
@@ -52,4 +72,5 @@ export const getImageUrl = async (identifier) => {
     }
 };
 
+// ส่งออก oracleApi เป็น default export เพื่อความเข้ากันได้กับโค้ดเดิม
 export default oracleApi;

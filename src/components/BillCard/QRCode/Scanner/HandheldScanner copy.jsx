@@ -3,6 +3,7 @@ import { Loader2 } from "lucide-react";
 import Swal from "sweetalert2";
 import BillDetailPopup from "../../Table/view/BillDetail/BillDetailPopup";
 import { directAccessService } from "../../../../services/directAccessService";
+import { inventoryService } from "../../../../services/inventoryService";
 
 const HandheldScanner = ({
   isOpen,
@@ -10,6 +11,8 @@ const HandheldScanner = ({
   bills,
   onSelectSubInv,
   selectedSubInv,
+  isLoading: parentLoading,
+  error: parentError,
 }) => {
   // States
   const [isScanning, setIsScanning] = useState(false);
@@ -19,204 +22,209 @@ const HandheldScanner = ({
   const [isClosing, setIsClosing] = useState(false);
   const [isChangingSubInv, setIsChangingSubInv] = useState(false);
   const [isScanButtonActive, setIsScanButtonActive] = useState(false);
-  const [previousBills, setPreviousBills] = useState(bills);
-  const [zebraScanner, setZebraScanner] = useState(false);
+  const [previousSubInv, setPreviousSubInv] = useState(selectedSubInv); // เก็บค่า subinv เดิมไว้
   const [lastScan, setLastScan] = useState("");
-  const [suppressErrors, setSuppressErrors] = useState(true);
-  const [zebraConfig, setZebraConfig] = useState({
-    minLength: 10,
-    readTimeout: 60000,
-    bufferTimeout: 500,
-    enableTab: true,
-    enableContinuous: true,
-    jsonDetectionDelay: 300
-  });
+  const [inputValue, setInputValue] = useState(""); // ใช้ controlled input
 
-  // Refs
-  const bufferRef = useRef("");
-  const timeoutRef = useRef(null);
-  const scanTimeoutRef = useRef(null);
-  const hiddenInputRef = useRef(null);
-  const latestQrData = useRef(null);
-  const scannerReadyRef = useRef(false);
-  const consecutiveScansRef = useRef(0);
-  const scannerConnectedRef = useRef(false);
-  const scanStartTimeRef = useRef(null);
-  const jsonCompleteRef = useRef(false);
-  const typingSpeedRef = useRef([]);
-
-  // ฟังก์ชันตรวจสอบว่าเป็นการสแกนหรือพิมพ์ธรรมดา
-  const isHighSpeedInput = () => {
-    if (!scanStartTimeRef.current || !typingSpeedRef.current.length) {
-      return false;
-    }
-    
-    // คำนวณความเร็วในการพิมพ์
-    const elapsedTime = (Date.now() - scanStartTimeRef.current) / 1000; // เวลาที่ผ่านไป (วินาที)
-    const charCount = bufferRef.current.length;
-    
-    if (elapsedTime < 0.1) return false; // เวลาผ่านไปน้อยเกินไป
-    
-    const typingSpeed = charCount / elapsedTime; // ตัวอักษรต่อวินาที
-    
-    // หากพิมพ์เร็วกว่า 10 ตัวอักษรต่อวินาที ถือว่าเป็นการสแกน
-    return typingSpeed > 10;
+  // Zebra scanner config
+  const zebraConfig = {
+    minLength: 3, // ข้อมูลขั้นต่ำที่จะประมวลผล
+    readTimeout: 300000, // 5 นาที
+    autoProcessDelay: 300, // เวลารอประมวลผลอัตโนมัติ (ms)
+    jsonDetectionDelay: 50, // เวลารอเมื่อตรวจพบ JSON
   };
 
-  // Validate QR data - แก้ไขการแยกแยะและจัดการกับข้อมูล JSON
+  // Refs
+  const inputRef = useRef(null);
+  const autoProcessTimeoutRef = useRef(null);
+  const scanTimeoutRef = useRef(null);
+  const latestQrDataRef = useRef(null);
+  const isProcessingRef = useRef(false);
+  const mountedRef = useRef(true);
+  const lastInputTimeRef = useRef(0);
+  const inputStableTimeoutRef = useRef(null);
+  const pendingSubInvChangeRef = useRef(null); // เก็บข้อมูลระหว่างการเปลี่ยน subinv
+
+  // เพิ่ม cleanup เมื่อ component unmount
+  useEffect(() => {
+    mountedRef.current = true;
+    
+    return () => {
+      mountedRef.current = false;
+      if (autoProcessTimeoutRef.current) {
+        clearTimeout(autoProcessTimeoutRef.current);
+      }
+      if (scanTimeoutRef.current) {
+        clearTimeout(scanTimeoutRef.current);
+      }
+      if (inputStableTimeoutRef.current) {
+        clearTimeout(inputStableTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  // ตรวจจับการเปลี่ยนแปลงของ subinventory
+  useEffect(() => {
+    // ถ้ามีการเปลี่ยน subinventory และกำลังรอ
+    if (selectedSubInv !== previousSubInv && isChangingSubInv) {
+      console.log(`Subinventory changed from ${previousSubInv} to ${selectedSubInv}`);
+      
+      // ถ้ามีข้อมูลที่รออยู่ (จาก QR ที่สแกนล่าสุด)
+      if (latestQrDataRef.current) {
+        console.log("Setting up re-scan with latest data after subinv change");
+        
+        // ตั้งค่าข้อมูลที่รออยู่
+        pendingSubInvChangeRef.current = {
+          data: latestQrDataRef.current,
+          newSubInv: selectedSubInv
+        };
+        
+        // ทำ rescan หลังจาก render รอบใหม่
+        setTimeout(() => {
+          if (mountedRef.current && pendingSubInvChangeRef.current) {
+            console.log("Auto re-scanning after subinventory change");
+            processScannedData(pendingSubInvChangeRef.current.data.rawData);
+            pendingSubInvChangeRef.current = null;
+          }
+        }, 500);
+      }
+    }
+    
+    // อัพเดต previousSubInv
+    setPreviousSubInv(selectedSubInv);
+  }, [selectedSubInv]);
+
+  // Validate และแปลง QR data
   const validateQrData = (data) => {
     try {
-      console.log("Raw data from scanner:", data);
-      
-      // ถ้าไม่มีข้อมูลหรือเป็นสตริงว่าง
-      if (!data || (typeof data === 'string' && data.trim() === '')) {
-        throw new Error('ไม่พบข้อมูลจากการสแกน');
+      if (!data) {
+        throw new Error("ไม่พบข้อมูล");
       }
+      
+      console.log("Raw data from scanner:", data);
+      const trimmedData = data.toString().trim();
       
       let partNumber = null;
       let subinventory = selectedSubInv || null;
       let inventory_item_id = null;
       let jsonData = null;
       
-      // ตรวจสอบว่าข้อมูลเป็น JSON หรือไม่
-      if (typeof data === 'string' && data.trim().startsWith('{') && data.trim().endsWith('}')) {
+      // ลองแปลง JSON
+      if (trimmedData.startsWith('{') && trimmedData.endsWith('}')) {
         try {
-          // วิธีที่ 1: ลองแปลง JSON โดยตรง
-          jsonData = JSON.parse(data.trim());
+          jsonData = JSON.parse(trimmedData);
           console.log("Successfully parsed JSON data:", jsonData);
-        } catch (initialJsonError) {
-          console.error("Initial JSON parse error:", initialJsonError);
+        } catch (jsonError) {
+          console.error("JSON parse error:", jsonError);
           
+          // ถ้าแปลง JSON ไม่ได้ ลองใช้ regex
           try {
-            // วิธีที่ 2: แก้ไขปัญหาการเข้ารหัส UTF-8 สำหรับภาษาไทย
-            // โดยใช้ Buffer แทนการใช้ escape/unescape ที่ deprecated แล้ว
-            const sanitizedData = data.trim()
-              .replace(/\\u[\dA-Fa-f]{4}/g, match => JSON.parse(`"${match}"`))
-              .replace(/[\u0E00-\u0E7F]/g, char => char); // คงค่าภาษาไทยไว้
+            const partNumberMatch = trimmedData.match(/"partNumber"\s*:\s*"([^"]+)"/);
+            const subinventoryMatch = trimmedData.match(/"subinventory"\s*:\s*"([^"]+)"/);
+            const inventoryItemIdMatch = trimmedData.match(/"inventory_item_id"\s*:\s*"([^"]+)"/);
             
-            jsonData = JSON.parse(sanitizedData);
-            console.log("Successfully parsed sanitized JSON data:", jsonData);
-          } catch (sanitizedJsonError) {
-            console.error("Error parsing sanitized JSON:", sanitizedJsonError);
+            if (partNumberMatch) partNumber = partNumberMatch[1];
+            if (subinventoryMatch) subinventory = subinventoryMatch[1];
+            if (inventoryItemIdMatch) inventory_item_id = inventoryItemIdMatch[1];
             
-            // วิธีที่ 3: ถ้ายังไม่ได้ ลองดึงข้อมูลด้วย regex
-            try {
-              const partNumberMatch = data.match(/"partNumber"\s*:\s*"([^"]+)"/);
-              const subinventoryMatch = data.match(/"subinventory"\s*:\s*"([^"]+)"/);
-              const inventoryItemIdMatch = data.match(/"inventory_item_id"\s*:\s*"([^"]+)"/);
-              
-              if (partNumberMatch) partNumber = partNumberMatch[1];
-              if (subinventoryMatch) subinventory = subinventoryMatch[1];
-              if (inventoryItemIdMatch) inventory_item_id = inventoryItemIdMatch[1];
-              
-              console.log("Manually extracted data:", { partNumber, subinventory, inventory_item_id });
-            } catch (regexError) {
-              console.error("Regex extraction failed:", regexError);
-            }
+            console.log("Manually extracted with regex:", { partNumber, subinventory, inventory_item_id });
+          } catch (regexError) {
+            console.error("Regex extraction failed:", regexError);
           }
         }
+      }
+      
+      // ถ้ามี JSON data ที่แปลงได้
+      if (jsonData) {
+        partNumber = jsonData.partNumber || jsonData.PartNumber || jsonData.PARTNUMBER;
+        subinventory = jsonData.subinventory || jsonData.Subinventory || jsonData.SUBINVENTORY || selectedSubInv;
+        inventory_item_id = jsonData.inventory_item_id || jsonData.Inventory_item_id || jsonData.INVENTORY_ITEM_ID;
         
-        // ดึงข้อมูลจาก JSON ที่แปลงสำเร็จ
-        if (jsonData) {
-          partNumber = jsonData.partNumber || jsonData.PartNumber || jsonData.PARTNUMBER;
-          subinventory = jsonData.subinventory || jsonData.Subinventory || jsonData.SUBINVENTORY || selectedSubInv;
-          inventory_item_id = jsonData.inventory_item_id || jsonData.Inventory_item_id || jsonData.INVENTORY_ITEM_ID;
-          
-          // ตรวจสอบว่ามีการเข้ารหัส Base64 สำหรับ subinventory หรือไม่
-          if (jsonData.subinventory_encoded) {
-            try {
-              subinventory = decodeURIComponent(atob(jsonData.subinventory_encoded));
-            } catch (b64Error) {
-              console.error("Error decoding Base64 subinventory:", b64Error);
-            }
+        // ถ้า subinventory เป็น Base64
+        if (jsonData.subinventory_encoded) {
+          try {
+            subinventory = decodeURIComponent(atob(jsonData.subinventory_encoded));
+          } catch (error) {
+            console.error("Base64 decode error:", error);
           }
         }
       } else {
         // ถ้าไม่ใช่ JSON ใช้ข้อมูลเป็น part number โดยตรง
-        partNumber = data.toString().trim();
-        console.log("Treating input as direct part number:", partNumber);
+        // ตรวจสอบว่ามีรูปแบบของ part number ที่มีการเว้นวรรค
+        partNumber = trimmedData;
+        
+        // ตรวจสอบรูปแบบพิเศษ เช่น "xxxxx-xxxx xX" หรือ part number ที่มีเว้นวรรค
+        const partNumberRegex = /^(\d+-\d+\s\w\w|\d+\s\d+|\w+-\w+\s\w+)$/;
+        if (partNumberRegex.test(trimmedData)) {
+          console.log("Special part number format detected with spaces:", trimmedData);
+          // รักษารูปแบบดั้งเดิมไว้
+          partNumber = trimmedData;
+        }
       }
       
-      // ถ้ายังไม่มีข้อมูลใด ๆ ให้แจ้งข้อผิดพลาด
+      // ถ้าไม่มีข้อมูลที่จำเป็น
       if (!partNumber && !inventory_item_id) {
-        throw new Error('ไม่สามารถระบุรหัสชิ้นส่วนหรือรหัสสินค้าได้');
+        throw new Error("ไม่สามารถระบุ Part Number ได้");
       }
       
+      console.log("Validated data:", { partNumber, subinventory, inventory_item_id });
       return {
         partNumber,
         subinventory,
         inventory_item_id,
-        rawData: data,
-        isZebraScanned: zebraScanner,
-        jsonData
+        rawData: data
       };
     } catch (error) {
-      console.error('QR Data validation error:', error);
+      console.error("QR data validation error:", error);
       throw error;
     }
   };
 
-  // Process scanned data - แก้ไขวิธีการประมวลผลข้อมูลและการเรียกใช้ API
+  // ฟังก์ชันประมวลผลข้อมูลที่สแกนได้
   const processScannedData = async (input) => {
-    if (!input) {
-      console.log("No input data to process");
-      return;
-    }
-    
-    // ตรวจสอบว่าเป็นการพิมพ์ด้วยคีย์บอร์ดธรรมดาหรือไม่
-    const isManualTyping = !zebraScanner && !isHighSpeedInput();
-    
-    // ถ้าเป็นการพิมพ์ธรรมดาให้ไม่ทำงาน
-    if (isManualTyping) {
-      setScanningMessage("โปรดใช้เครื่องสแกน QR Code เท่านั้น");
-      bufferRef.current = "";
-      if (hiddenInputRef.current) {
-        hiddenInputRef.current.value = "";
-      }
-      return;
-    }
+    if (!input || isProcessingRef.current) return;
     
     try {
+      isProcessingRef.current = true;
       setIsScanning(true);
       setScanningMessage("กำลังประมวลผลข้อมูล...");
-      console.log("Processing input data:", input);
-
-      // บันทึกข้อมูลที่สแกนล่าสุดเพื่อแสดงให้ผู้ใช้เห็น
-      setLastScan(input.toString().substring(0, 30) + (input.length > 30 ? "..." : ""));
+      console.log("Processing scanner input:", input);
       
-      // เมื่อเครื่องสแกน Zebra ส่งข้อมูลมา แสดงว่าเชื่อมต่อได้แล้ว
-      if (zebraScanner) {
-        scannerConnectedRef.current = true;
-        consecutiveScansRef.current++;
-        
-        // แสดงข้อความและสั่นเมื่อได้รับข้อมูลจาก Zebra Scanner
-        if (consecutiveScansRef.current === 1) {
-          if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
-        }
+      // เคลียร์ input field
+      setInputValue("");
+      
+      // บันทึกข้อมูลที่สแกนล่าสุด (แสดงแค่บางส่วน)
+      if (typeof input === 'string') {
+        setLastScan(input.substring(0, 30) + (input.length > 30 ? "..." : ""));
+      } else {
+        setLastScan(JSON.stringify(input).substring(0, 30) + "...");
       }
       
-      // Parse QR data
+      // สั่นเพื่อแจ้งเตือนผู้ใช้
+      if (navigator.vibrate) navigator.vibrate(100);
+      
+      // แปลงและตรวจสอบข้อมูลที่สแกนได้
       let qrData;
       try {
         qrData = validateQrData(input);
-        console.log('Validated QR Data:', qrData);
-        latestQrData.current = qrData;
-      } catch (parseError) {
-        // ถ้าแปลงไม่ได้ ให้ใช้ข้อมูลดิบทั้งหมดเป็น itemId
-        console.log("QR Parse error, using raw input:", parseError);
-        qrData = {
-          partNumber: input.toString().trim(),
-          subinventory: selectedSubInv,
-          inventory_item_id: null,
-          isZebraScanned: zebraScanner,
-          isRawInput: true
-        };
-        latestQrData.current = qrData;
+        latestQrDataRef.current = qrData;
+      } catch (error) {
+        console.error("Validation error:", error);
+        setScanningMessage("ข้อมูลไม่ถูกต้อง กรุณาลองใหม่");
+        setTimeout(() => {
+          if (mountedRef.current) {
+            setScanningMessage("พร้อมรับข้อมูล");
+          }
+        }, 2000);
+        isProcessingRef.current = false;
+        return;
       }
       
-      // ถ้า subinventory ไม่ตรงกับที่เลือกไว้ ให้ถามผู้ใช้
+      // ตรวจสอบว่า subinventory ตรงกับที่เลือกไว้หรือไม่
       if (qrData.subinventory && qrData.subinventory !== selectedSubInv) {
         console.log("Different subinventory detected:", qrData.subinventory);
+        setScanningMessage(`พบข้อมูลจาก ${qrData.subinventory}`);
+        
         const willChange = await Swal.fire({
           title: "พบข้อมูลจาก Subinventory อื่น",
           html: `Part Number นี้อยู่ใน ${qrData.subinventory}<br>ต้องการเปลี่ยน Subinventory หรือไม่?`,
@@ -230,55 +238,94 @@ const HandheldScanner = ({
 
         if (willChange.isConfirmed) {
           setIsChangingSubInv(true);
-          setPreviousBills(bills);
           setScanningMessage(`กำลังเปลี่ยน Subinventory เป็น ${qrData.subinventory}...`);
-          await onSelectSubInv(qrData.subinventory);
+          
+          try {
+            // เรียกฟังก์ชันเปลี่ยน subinventory
+            await onSelectSubInv(qrData.subinventory);
+            
+            // จะมีการประมวลผลใหม่ในรอบถัดไปจาก useEffect
+            // จบฟังก์ชัน และออกจากลูปการประมวลผล
+            isProcessingRef.current = false;
+            return;
+          } catch (error) {
+            console.error("Error changing subinventory:", error);
+            await Swal.fire({
+              title: "เกิดข้อผิดพลาด",
+              text: `ไม่สามารถเปลี่ยน Subinventory ได้: ${error.message}`,
+              icon: "error",
+              confirmButtonText: "ตกลง"
+            });
+            
+            // รีเซ็ตสถานะการเปลี่ยน subinventory
+            setIsChangingSubInv(false);
+            isProcessingRef.current = false;
+            return;
+          }
         }
       }
       
-      // แสดงข้อความแบบเงียบๆ แทนการใช้ Swal ที่ต้องกดปิด
-      setScanningMessage(`กำลังโหลดข้อมูล ${qrData.partNumber || 'ไม่ระบุ'} กรุณารอสักครู่...`);
+      setScanningMessage(`กำลังค้นหาข้อมูล ${qrData.partNumber || 'ไม่ระบุ'}...`);
       
-      // ใช้ค่า partNumber หรือ inventory_item_id ที่แยกออกมาแล้ว ไม่ใช่ JSON ทั้งก้อน
+      // เตรียมพารามิเตอร์สำหรับการค้นหา
       const searchParam = qrData.inventory_item_id || qrData.partNumber;
-      
-      // ตรวจสอบและจัดการค่า searchParam
       let encodedSearchParam = searchParam;
-      // ตรวจสอบว่า searchParam เป็น JSON หรือมีภาษาไทยหรือไม่
+      
+      // ถ้ามีช่องว่างหรือภาษาไทย ต้องใช้ encodeURIComponent
       if (typeof searchParam === 'string') {
-        if (searchParam.trim().startsWith('{') || /[\u0E00-\u0E7F]/.test(searchParam)) {
-          // ถ้ามีภาษาไทยหรือเป็น JSON string ให้ส่งเฉพาะ partNumber เป็น string เท่านั้น
-          encodedSearchParam = qrData.partNumber;
-          console.log("Using only partNumber for search due to Thai chars:", encodedSearchParam);
+        if (searchParam.includes(' ') || /[\u0E00-\u0E7F]/.test(searchParam)) {
+          console.log(`Special characters or spaces found in part number: "${searchParam}", encoding...`);
+          encodedSearchParam = encodeURIComponent(searchParam);
         }
       }
       
       console.log(`Searching with: subinventory=${qrData.subinventory || selectedSubInv}, searchParam=${encodedSearchParam}`);
       
-      // ใช้ Promise.race เพื่อป้องกันการรอนานเกินไป
-      let billDetails;
+      // ค้นหาข้อมูล bill cards ด้วย directAccessService
+      let billDetails = [];
       try {
-        const fetchPromise = directAccessService.getBillCards(
-          qrData.subinventory || selectedSubInv,
-          encodedSearchParam  // ใช้ค่าที่ปรับแล้ว
+        setScanningMessage(`กำลังค้นหาข้อมูล...`);
+        
+        // สร้าง options สำหรับ retry logic
+        const options = {
+          retries: 2,
+          retryDelay: 1000
+        };
+        
+        billDetails = await directAccessService.fetchWithRetry(
+          () => directAccessService.getBillCards(
+            qrData.subinventory || selectedSubInv,
+            searchParam // ส่ง searchParam ที่ยังไม่ได้ encode ไป ให้ service จัดการเอง
+          ),
+          options.retries,
+          options.retryDelay
         );
         
-        const timeoutPromise = new Promise((_, reject) => 
-          setTimeout(() => reject(new Error("timeout")), 15000)
-        );
-        
-        billDetails = await Promise.race([fetchPromise, timeoutPromise])
-          .catch(error => {
-            console.error("API Error (suppressed):", error);
-            return [];
-          });
-      } catch (fetchError) {
-        console.error("Fetch error:", fetchError);
+        console.log("API response:", billDetails?.length || 0, "records");
+      } catch (error) {
+        console.error("API error:", error);
         billDetails = [];
       }
+      
+      // ดึงข้อมูล inventory เพิ่มเติม
+      let inventoryItems = [];
+      try {
+        setScanningMessage(`กำลังดึงข้อมูลสต็อค...`);
+        
+        const inventories = await inventoryService.fetchInventories();
+        const currentInventory = inventories.find(inv => 
+          inv.secondary_inventory === (qrData.subinventory || selectedSubInv)
+        );
+        
+        if (currentInventory?.inventory_items) {
+          inventoryItems = currentInventory.inventory_items;
+          console.log(`Found ${inventoryItems.length} inventory items`);
+        }
+      } catch (error) {
+        console.error("Inventory fetch error:", error);
+      }
 
-      console.log("Bill details count:", billDetails?.length || 0);
-
+      // ประมวลผลและแสดงข้อมูล
       if (billDetails && billDetails.length > 0) {
         console.log("Found bill details:", billDetails.length, "records");
         const sortedBills = [...billDetails].sort((a, b) => {
@@ -287,7 +334,23 @@ const HandheldScanner = ({
           return dateB - dateA;
         });
 
-        const isOfflineData = billDetails[0]?._isOfflineData;
+        // ค้นหาข้อมูล stock จาก inventoryItems
+        const matchingInventoryItem = inventoryItems.find(item => 
+          item.part_number === sortedBills[0].M_PART_NUMBER || 
+          item.inventory_item_id === sortedBills[0].inventory_item_id
+        );
+        
+        // อัพเดทค่า stk_qty ถ้าจำเป็น
+        if (matchingInventoryItem && 
+            (sortedBills[0].stk_qty === "0" || 
+             !sortedBills[0].stk_qty || 
+             parseFloat(sortedBills[0].stk_qty) === 0)) {
+          console.log("Updating stk_qty from inventory:", matchingInventoryItem.stk_qty);
+          
+          sortedBills.forEach(bill => {
+            bill.stk_qty = matchingInventoryItem.stk_qty || bill.stk_qty || "0";
+          });
+        }
 
         const billData = {
           ...sortedBills[0],
@@ -299,411 +362,188 @@ const HandheldScanner = ({
           ),
           billCount: billDetails.length,
           latestDate: new Date(sortedBills[0].M_DATE || new Date()),
-          _isOfflineData: isOfflineData,
-          _zebraScanned: zebraScanner,
-          _qrData: qrData
+          _qrData: qrData,
+          _inventoryData: matchingInventoryItem || null
         };
 
+        // สั่นให้รู้ว่าพบข้อมูล
         if (navigator.vibrate) navigator.vibrate(200);
-        setScanningMessage("พบข้อมูล! กำลังแสดงรายละเอียด...");
+        setScanningMessage("พบข้อมูล!");
 
+        // แสดงข้อมูล
         console.log('Setting selected bill:', billData);
-        await new Promise(resolve => {
-          setSelectedBill(billData);
-          setTimeout(resolve, 300);
-        });
-
+        setSelectedBill(billData);
         setShowDetailPopup(true);
-        console.log("Popup visibility set to:", true);
-
-        if (isOfflineData && !suppressErrors) {
-          setTimeout(() => {
-            const toast = Swal.mixin({
-              toast: true,
-              position: 'top-end',
-              showConfirmButton: false,
-              timer: 3000,
-              timerProgressBar: true
-            });
-            
-            toast.fire({
-              icon: 'warning',
-              title: 'ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้ แสดงข้อมูลเท่าที่มี'
-            });
-          }, 1000);
-        }
       } else {
-        // กรณีไม่พบข้อมูล: สร้างข้อมูลว่างและแสดงข้อมูลโดยไม่แสดง error ปิดกั้นการทำงาน
-        console.log("No bill details found, creating empty bill structure");
+        // กรณีไม่พบข้อมูล แต่ยังมี inventory data
+        console.log("No bill details found, checking inventory data");
         
-        // สร้างข้อมูล bill data แบบว่างสำหรับแสดง popup
+        const matchingInventoryItem = inventoryItems.find(item => 
+          item.part_number === qrData.partNumber || 
+          item.inventory_item_id === qrData.inventory_item_id
+        );
+        
+        let stockQty = "0";
+        if (matchingInventoryItem) {
+          console.log("Found matching inventory item:", matchingInventoryItem);
+          stockQty = matchingInventoryItem.stk_qty || "0";
+        }
+        
+        // สร้างข้อมูลเปล่าเพื่อแสดง
         const emptyBillData = {
           M_PART_NUMBER: qrData.partNumber || input.toString().trim(),
-          M_PART_DESCRIPTION: typeof qrData.description === 'string' ? 
-            qrData.description : 
-            (qrData.partNumber ? `Part ${qrData.partNumber}` : 'ไม่พบข้อมูล'),
+          M_PART_DESCRIPTION: matchingInventoryItem?.part_description || 
+            `Part ${qrData.partNumber}`,
           M_SUBINV: qrData.subinventory || selectedSubInv,
           M_DATE: new Date().toISOString(),
           M_QTY: "0",
           begin_qty: "0",
+          stk_qty: stockQty,
           M_ID: "-",
           TRANSACTION_TYPE_NAME: "-",
           M_USER_NAME: "-",
-          inventory_item_id: qrData.inventory_item_id || "",
+          inventory_item_id: qrData.inventory_item_id || (matchingInventoryItem?.inventory_item_id || ""),
           relatedBills: [],
           allRelatedBills: [],
           totalQty: 0,
           billCount: 0,
           latestDate: new Date(),
           _isEmptyData: true,
-          _zebraScanned: zebraScanner,
-          _qrData: qrData
+          _qrData: qrData,
+          _inventoryData: matchingInventoryItem || null
         };
 
-        console.log("Created empty bill data:", emptyBillData);
+        console.log("Created empty bill data with stk_qty:", emptyBillData.stk_qty);
+        
+        // สั่นแจ้งเตือนแบบอื่น (สั้นๆ 3 ครั้ง)
         if (navigator.vibrate) navigator.vibrate([100, 100, 100]);
 
-        await new Promise(resolve => {
-          setSelectedBill(emptyBillData);
-          setTimeout(resolve, 300);
-        });
-        
+        // แสดงข้อมูลว่าง
+        setScanningMessage("ไม่พบข้อมูลการเคลื่อนไหว");
+        setSelectedBill(emptyBillData);
         setShowDetailPopup(true);
-        console.log("Popup visibility set to true for empty data");
-        
-        if (!suppressErrors) {
-          setTimeout(() => {
-            const toast = Swal.mixin({
-              toast: true,
-              position: 'top-end',
-              showConfirmButton: false,
-              timer: 3000,
-              timerProgressBar: true
-            });
-            
-            toast.fire({
-              icon: 'info',
-              title: `ไม่พบข้อมูลของ ${qrData.partNumber || 'ไม่ระบุ'}`
-            });
-          }, 500);
-        }
       }
     } catch (error) {
-      console.error("Scanning error:", error);
+      console.error("Processing error:", error);
       
+      // สั่นแจ้งว่ามีข้อผิดพลาด
       if (navigator.vibrate) navigator.vibrate([400, 100, 400]);
       
-      if (!suppressErrors) {
-        const toast = Swal.mixin({
-          toast: true,
-          position: 'top-end',
-          showConfirmButton: false,
-          timer: 3000,
-          timerProgressBar: true
-        });
-        
-        toast.fire({
-          icon: 'error',
-          title: 'เกิดข้อผิดพลาดในการโหลดข้อมูล'
-        });
-      }
+      setScanningMessage(`เกิดข้อผิดพลาด: ${error.message}`);
+      setTimeout(() => {
+        if (mountedRef.current) {
+          setScanningMessage("พร้อมรับข้อมูล");
+          setIsScanButtonActive(true);
+        }
+      }, 3000);
     } finally {
-      if (!showDetailPopup && !isChangingSubInv) {
+      // รีเซ็ตสถานะการประมวลผล
+      isProcessingRef.current = false;
+      
+      if (!showDetailPopup && !isChangingSubInv && mountedRef.current) {
         setIsScanning(false);
-        setScanningMessage(zebraScanner 
-          ? "พร้อมรับข้อมูลจากเครื่องสแกน Zebra" 
-          : "พร้อมสแกน QR Code");
+        setScanningMessage("พร้อมรับข้อมูล");
+        
+        // โฟกัสที่ input อีกครั้ง
+        if (inputRef.current) {
+          setTimeout(() => {
+            try {
+              inputRef.current.focus();
+              inputRef.current.select();
+            } catch (e) {
+              console.log("Focus error:", e);
+            }
+          }, 300);
+        }
       }
     }
   };
 
-  // Effect for Zebra Scanner
-  useEffect(() => {
-    if (isOpen && zebraScanner) {
-      console.log("Zebra Scanner mode activated");
-      setScanningMessage("โหมดเครื่องสแกน Zebra DS22 พร้อมใช้งาน");
-      scannerReadyRef.current = true;
-      
-      // โฟกัสที่ hidden input เพื่อรับข้อมูลจากเครื่องสแกน
-      if (hiddenInputRef.current) {
-        setTimeout(() => {
-          hiddenInputRef.current.focus();
-        }, 300);
+  // ตรวจสอบการหยุดพิมพ์และประมวลผลอัตโนมัติ
+  const checkInputStable = (value) => {
+    if (!value || value.length < zebraConfig.minLength) return;
+    
+    // เคลียร์ timeout เก่า
+    if (inputStableTimeoutRef.current) {
+      clearTimeout(inputStableTimeoutRef.current);
+    }
+    
+    // ตั้ง timeout ใหม่
+    inputStableTimeoutRef.current = setTimeout(() => {
+      if (mountedRef.current && value) {
+        console.log("Auto processing after stable input:", value);
+        processScannedData(value);
       }
+    }, zebraConfig.autoProcessDelay);
+  };
+
+  // Effect สำหรับการตั้งค่า input focus เมื่อเปิด
+  useEffect(() => {
+    if (isOpen) {
+      console.log("Scanner opened, activating focus");
+      setScanningMessage("พร้อมรับข้อมูลจากเครื่องสแกน");
+      
+      // โฟกัสที่ input
+      setTimeout(() => {
+        if (inputRef.current && mountedRef.current) {
+          try {
+            inputRef.current.focus();
+            inputRef.current.select();
+            setIsScanButtonActive(true);
+          } catch (e) {
+            console.error("Focus error:", e);
+          }
+        }
+      }, 300);
     }
     
     return () => {
-      scannerReadyRef.current = false;
-    };
-  }, [isOpen, zebraScanner]);
-
-  // ปรับปรุง handler สำหรับการรับข้อมูลจากเครื่องสแกน
-  useEffect(() => {
-    const handleKeyPress = (e) => {
-      if (!isOpen || !isScanButtonActive) return;
-
-      if (timeoutRef.current) clearTimeout(timeoutRef.current);
-      if (scanTimeoutRef.current) clearTimeout(scanTimeoutRef.current);
-
-      // รองรับการกด Enter
-      if (e.key === 'Enter' || e.keyCode === 13) {
-        e.preventDefault();
-        console.log("Enter key detected, processing buffer:", bufferRef.current);
-        
-        // ตรวจสอบว่าเป็นการพิมพ์ธรรมดาหรือไม่
-        const isManualTyping = !zebraScanner && !isHighSpeedInput();
-        
-        if (bufferRef.current && !isManualTyping) {
-          processScannedData(bufferRef.current);
-          bufferRef.current = '';
-          typingSpeedRef.current = [];
-        } else if (isManualTyping) {
-          // แจ้งเตือนถ้าเป็นการพิมพ์ธรรมดา
-          setScanningMessage("โปรดใช้เครื่องสแกน QR Code เท่านั้น");
-          bufferRef.current = '';
-        }
-        return;
+      // ล้างค่าเมื่อปิด component
+      if (scanTimeoutRef.current) {
+        clearTimeout(scanTimeoutRef.current);
       }
-
-      // บันทึกเวลาเริ่มต้นการสแกนถ้ายังไม่มี
-      if (!scanStartTimeRef.current) {
-        scanStartTimeRef.current = Date.now();
-        typingSpeedRef.current = [];
+      if (autoProcessTimeoutRef.current) {
+        clearTimeout(autoProcessTimeoutRef.current);
       }
-
-      // บันทึกเวลาสำหรับคำนวณความเร็วการพิมพ์
-      typingSpeedRef.current.push({
-        char: e.key,
-        time: Date.now()
-      });
-
-      // เพิ่มอักขระใหม่เข้า buffer
-      bufferRef.current += e.key;
-      console.log("Buffer updated:", bufferRef.current);
-
-      // ตรวจจับรูปแบบ JSON ที่สมบูรณ์
-      if (bufferRef.current.includes('{') && bufferRef.current.includes('}') && 
-          bufferRef.current.indexOf('{') < bufferRef.current.lastIndexOf('}')) {
-        // เมื่อพบรูปแบบ JSON ที่อาจสมบูรณ์ ตั้ง flag ว่าน่าจะได้ JSON ครบแล้ว
-        jsonCompleteRef.current = true;
-        
-        // รอเวลาสั้นๆ ก่อนประมวลผล เผื่อยังมีข้อมูลตามมา
-        if (timeoutRef.current) clearTimeout(timeoutRef.current);
-        timeoutRef.current = setTimeout(() => {
-          if (jsonCompleteRef.current && bufferRef.current) {
-            // ตรวจสอบว่าเป็นการพิมพ์ธรรมดาหรือไม่
-            const isManualTyping = !zebraScanner && !isHighSpeedInput();
-            
-            if (!isManualTyping) {
-              processScannedData(bufferRef.current);
-              bufferRef.current = '';
-              jsonCompleteRef.current = false;
-              scanStartTimeRef.current = null;
-              typingSpeedRef.current = [];
-            } else {
-              // แจ้งเตือนถ้าเป็นการพิมพ์ธรรมดา
-              setScanningMessage("โปรดใช้เครื่องสแกน QR Code เท่านั้น");
-              bufferRef.current = '';
-              jsonCompleteRef.current = false;
-            }
-          }
-        }, zebraConfig.jsonDetectionDelay);
-      }
-
-      // ตรวจสอบว่าเป็นการสแกนหรือการพิมพ์ธรรมดา
-      const isLikelyScanner = isHighSpeedInput() || zebraScanner;
-      
-      if (!jsonCompleteRef.current && isLikelyScanner) {
-        // ถ้าเป็นการสแกนและมีข้อมูลมากพอ
-        if (bufferRef.current.length >= zebraConfig.minLength && !isScanning) {
-          // รอเวลาสั้นๆ ก่อนประมวลผล เผื่อยังมีข้อมูลตามมา
-          if (timeoutRef.current) clearTimeout(timeoutRef.current);
-          timeoutRef.current = setTimeout(() => {
-            if (bufferRef.current) {
-              console.log("Auto-submit from scanner detected, processing data:", bufferRef.current);
-              processScannedData(bufferRef.current);
-              bufferRef.current = '';
-              jsonCompleteRef.current = false;
-              scanStartTimeRef.current = null;
-              typingSpeedRef.current = [];
-            }
-          }, zebraConfig.bufferTimeout);
-        }
-      }
-
-      // ตั้ง timeout สำหรับการรีเซ็ตการสแกน
-      const scanTimeout = zebraScanner ? zebraConfig.readTimeout : 30000;
-      scanTimeoutRef.current = setTimeout(() => {
-        bufferRef.current = '';
-        setIsScanButtonActive(false);
-        jsonCompleteRef.current = false;
-        scanStartTimeRef.current = null;
-        typingSpeedRef.current = [];
-        setScanningMessage("กดปุ่มสแกนอีกครั้งเพื่อสแกนใหม่");
-      }, scanTimeout);
-    };
-
-    // เพิ่ม handler สำหรับเหตุการณ์ Tab key ที่เครื่องสแกน Zebra อาจส่งมา
-    const handleKeyDown = (e) => {
-      if (!isOpen || !isScanButtonActive) return;
-      
-      // บางเครื่องสแกน Zebra อาจส่ง Tab แทนที่จะเป็น Enter
-      if (e.key === 'Tab' && zebraScanner && zebraConfig.enableTab) {
-        e.preventDefault();
-        console.log("Tab key detected from Zebra scanner, processing buffer:", bufferRef.current);
-        if (bufferRef.current) {
-          processScannedData(bufferRef.current);
-          bufferRef.current = '';
-          jsonCompleteRef.current = false;
-          scanStartTimeRef.current = null;
-          typingSpeedRef.current = [];
-        }
+      if (inputStableTimeoutRef.current) {
+        clearTimeout(inputStableTimeoutRef.current);
       }
     };
+  }, [isOpen]);
 
-    window.addEventListener('keypress', handleKeyPress);
-    window.addEventListener('keydown', handleKeyDown);
-    
-    return () => {
-      window.removeEventListener('keypress', handleKeyPress);
-      window.removeEventListener('keydown', handleKeyDown);
-      if (timeoutRef.current) clearTimeout(timeoutRef.current);
-      if (scanTimeoutRef.current) clearTimeout(scanTimeoutRef.current);
-      scanStartTimeRef.current = null;
-      jsonCompleteRef.current = false;
-      typingSpeedRef.current = [];
-    };
-  }, [isOpen, isScanButtonActive, isScanning, zebraScanner, zebraConfig]);
-
-  // Effect to handle bills update after subinventory change
-  useEffect(() => {
-    const handleBillsUpdate = async () => {
-      if (isChangingSubInv && bills !== previousBills && latestQrData.current) {
-        try {
-          console.log("Attempting auto rescan with data:", latestQrData.current);
-          setScanningMessage("กำลังค้นหาข้อมูลใน Subinventory ใหม่...");
-          setIsScanning(true);
-
-          // รอให้ข้อมูลอัพเดทเสร็จ
-          await new Promise((resolve) => setTimeout(resolve, 1000));
-
-          // ใช้ค่าที่แยกออกมาแล้ว ไม่ใช่ JSON ทั้งก้อน
-          const searchParam = latestQrData.current.inventory_item_id || latestQrData.current.partNumber;
-          
-          // ตรวจสอบและจัดการค่า searchParam
-          let encodedSearchParam = searchParam;
-          if (typeof searchParam === 'string') {
-            if (searchParam.trim().startsWith('{') || /[\u0E00-\u0E7F]/.test(searchParam)) {
-              encodedSearchParam = latestQrData.current.partNumber;
-              console.log("Using only partNumber for search after subinv change:", encodedSearchParam);
-            }
-          }
-          
-          const billDetails = await directAccessService.getBillCards(selectedSubInv, encodedSearchParam);
-
-          if (billDetails && billDetails.length > 0) {
-            console.log("Found bill after subinventory change:", billDetails.length, "records");
-            if (navigator.vibrate) navigator.vibrate(200);
-            setScanningMessage("พบข้อมูล! กำลังแสดงรายละเอียด...");
-
-            const sortedBills = [...billDetails].sort((a, b) => {
-              return new Date(b.M_DATE || 0) - new Date(a.M_DATE || 0);
-            });
-
-            const billData = {
-              ...sortedBills[0],
-              allRelatedBills: sortedBills,
-              relatedBills: sortedBills,
-              totalQty: billDetails.reduce(
-                (sum, bill) => sum + Number(bill.M_QTY || 0),
-                0
-              ),
-              billCount: billDetails.length,
-              latestDate: new Date(sortedBills[0].M_DATE || new Date()),
-              _zebraScanned: zebraScanner,
-              _qrData: latestQrData.current
-            };
-
-            await new Promise(resolve => {
-              setSelectedBill(billData);
-              setTimeout(resolve, 300);
-            });
-
-            setShowDetailPopup(true);
-          } else {
-            throw new Error("ไม่พบข้อมูลใน Subinventory ใหม่");
-          }
-        } catch (error) {
-          console.error("Auto rescan error:", error);
-          if (navigator.vibrate) navigator.vibrate([400, 100, 400]);
-          
-          if (!suppressErrors) {
-            await Swal.fire({
-              title: "ไม่พบข้อมูล",
-              html: `ไม่พบข้อมูลใน Subinventory: ${selectedSubInv}<br>สำหรับ Part Number: ${latestQrData.current.partNumber || 'ไม่ระบุ'}`,
-              icon: "warning",
-              confirmButtonText: "ตกลง",
-              confirmButtonColor: "#3085d6",
-            });
-          }
-        } finally {
-          setIsScanning(false);
-          setIsChangingSubInv(false);
-          if (!showDetailPopup) {
-            setScanningMessage("พร้อมสแกน QR Code");
-          }
-        }
-      }
-    };
-
-    handleBillsUpdate();
-  }, [bills, previousBills, isChangingSubInv, selectedSubInv, showDetailPopup, zebraScanner, suppressErrors]);
-
-  // Handler เมื่อกดปุ่มสแกน
+  // กดปุ่มสแกน
   const handleScanButtonPress = () => {
     setIsScanButtonActive(true);
-    if (navigator.vibrate) navigator.vibrate(200);
+    if (navigator.vibrate) navigator.vibrate(50);
     
-    setScanningMessage(zebraScanner 
-      ? "พร้อมรับข้อมูลจากเครื่องสแกน Zebra DS22" 
-      : "พร้อมรับข้อมูลจากเครื่องสแกน QR Code");
-    
+    setScanningMessage("พร้อมรับข้อมูลจากเครื่องสแกน");
     setLastScan("");
-    bufferRef.current = "";
-    jsonCompleteRef.current = false;
-    scanStartTimeRef.current = null;
-    typingSpeedRef.current = [];
+    setInputValue("");
     
-    if (hiddenInputRef.current) {
-      hiddenInputRef.current.focus();
-    }
-
-    consecutiveScansRef.current = 0;
-
-    if (scanTimeoutRef.current) clearTimeout(scanTimeoutRef.current);
-    scanTimeoutRef.current = setTimeout(() => {
-      if (!showDetailPopup && isScanButtonActive) {
-        setIsScanButtonActive(false);
-        setScanningMessage("กดปุ่มสแกนอีกครั้งเพื่อสแกนใหม่");
+    // โฟกัสที่ input
+    if (inputRef.current) {
+      try {
+        inputRef.current.focus();
+        inputRef.current.select();
+      } catch (e) {
+        console.error("Focus error:", e);
       }
-    }, zebraScanner ? zebraConfig.readTimeout : 30000);
+    }
+    
+    // ตั้งเวลาหมดอายุการสแกน
+    if (scanTimeoutRef.current) {
+      clearTimeout(scanTimeoutRef.current);
+    }
+    
+    scanTimeoutRef.current = setTimeout(() => {
+      if (mountedRef.current && !showDetailPopup && isScanButtonActive) {
+        setIsScanButtonActive(false);
+        setScanningMessage("กดปุ่มสแกนเพื่อเริ่มใหม่");
+      }
+    }, zebraConfig.readTimeout);
   };
 
-  // Clean up เมื่อ component unmounts หรือปิด
-  useEffect(() => {
-    if (!isOpen) {
-      setShowDetailPopup(false);
-      setSelectedBill(null);
-      setIsChangingSubInv(false);
-      setPreviousBills(bills);
-      latestQrData.current = null;
-      scanStartTimeRef.current = null;
-      jsonCompleteRef.current = false;
-      typingSpeedRef.current = [];
-    }
-  }, [isOpen, bills]);
-
-  // Handler เมื่อปิด popup
+  // ปิด popup
   const handleClose = () => {
     setIsClosing(true);
     setTimeout(() => {
@@ -712,23 +552,62 @@ const HandheldScanner = ({
       setShowDetailPopup(false);
       setSelectedBill(null);
       setLastScan("");
-      bufferRef.current = '';
-      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+      setInputValue("");
+      if (autoProcessTimeoutRef.current) clearTimeout(autoProcessTimeoutRef.current);
       if (scanTimeoutRef.current) clearTimeout(scanTimeoutRef.current);
-      scanStartTimeRef.current = null;
-      jsonCompleteRef.current = false;
-      typingSpeedRef.current = [];
+      if (inputStableTimeoutRef.current) clearTimeout(inputStableTimeoutRef.current);
     }, 300);
   };
 
+  // ปิด popup รายละเอียด
   const handleCloseDetail = () => {
-    console.log("Closing detail popup");
     setShowDetailPopup(false);
     setSelectedBill(null);
     onClose();
   };
 
+  // ไม่แสดงถ้าไม่ได้เปิดหรือไม่มี detail popup
   if (!isOpen && !showDetailPopup) return null;
+
+  // แสดงข้อความ error จาก parent
+  if (parentError) {
+    return (
+      <div className="fixed inset-0 z-50">
+        <div className="absolute inset-0 bg-gray-900/45 transition-opacity" onClick={handleClose} />
+        <div className="flex items-center justify-center min-h-screen p-4">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md">
+            <div className="flex items-center text-red-500 mb-4">
+              <span className="material-symbols-outlined mr-2">error</span>
+              <h2 className="text-xl font-bold">เกิดข้อผิดพลาด</h2>
+            </div>
+            <p className="mb-4 text-gray-700">{parentError}</p>
+            <button
+              onClick={handleClose}
+              className="w-full py-2 px-4 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+            >
+              ตกลง
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // แสดง loading จาก parent
+  if (parentLoading) {
+    return (
+      <div className="fixed inset-0 z-50">
+        <div className="absolute inset-0 bg-gray-900/45 transition-opacity" />
+        <div className="flex items-center justify-center min-h-screen p-4">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md text-center">
+            <Loader2 className="w-10 h-10 animate-spin mx-auto mb-4 text-blue-600" />
+            <p className="text-lg font-medium text-gray-800">กำลังโหลดข้อมูล...</p>
+            <p className="text-sm text-gray-600 mt-2">กรุณารอสักครู่</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <>
@@ -744,103 +623,19 @@ const HandheldScanner = ({
               isClosing ? "animate__zoomOut" : "animate__zoomIn"
             }`}
           >
-            {/* Hidden input for scanner - readonly เพื่อไม่ให้สามารถพิมพ์ได้ แต่ยังรับข้อมูลจากเครื่องสแกนได้ */}
-            <input
-              ref={hiddenInputRef}
-              type="text"
-              className="opacity-0 h-0 w-0 absolute"
-              autoComplete="off"
-              readOnly={!zebraScanner} // แก้ไขตรงนี้: ถ้าไม่ใช่โหมด Zebra ให้เป็น readonly
-              onChange={(e) => {
-                // บันทึกข้อมูลใน buffer แต่ไม่อนุญาตให้แก้ไขถ้าไม่ใช่การสแกน
-                if (zebraScanner) {
-                  bufferRef.current = e.target.value;
-                
-                  // บันทึกเวลาเริ่มต้นถ้ายังไม่มี
-                  if (!scanStartTimeRef.current) {
-                    scanStartTimeRef.current = Date.now();
-                    typingSpeedRef.current = [];
-                  }
-                
-                  if (e.target.value) {
-                    if (e.target.value.includes('{') && e.target.value.includes('}') &&
-                        e.target.value.indexOf('{') < e.target.value.lastIndexOf('}')) {
-                        
-                      console.log("Hidden input auto-processing JSON:", e.target.value);
-                      processScannedData(e.target.value);
-                      e.target.value = '';
-                      bufferRef.current = '';
-                      scanStartTimeRef.current = null;
-                      typingSpeedRef.current = [];
-                      return;
-                    }
-                  
-                    // เฉพาะข้อมูลจากเครื่องสแกนเท่านั้น
-                    if (e.target.value.length >= zebraConfig.minLength && 
-                        !jsonCompleteRef.current && 
-                        !isScanning) {
-                    
-                      if (timeoutRef.current) clearTimeout(timeoutRef.current);
-                      timeoutRef.current = setTimeout(() => {
-                        const currentValue = e.target.value || bufferRef.current;
-                        if (currentValue) {
-                          console.log(`Hidden input auto-processing:`, currentValue);
-                          processScannedData(currentValue);
-                          e.target.value = '';
-                          bufferRef.current = '';
-                          scanStartTimeRef.current = null;
-                          typingSpeedRef.current = [];
-                        }
-                      }, zebraConfig.bufferTimeout);
-                    }
-                  }
-                } else {
-                  // แจ้งเตือนถ้าผู้ใช้พยายามพิมพ์ในโหมดปกติ
-                  setScanningMessage("โปรดใช้เครื่องสแกน QR Code เท่านั้น");
-                  e.target.value = '';
-                }
-              }}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  e.preventDefault();
-                  const scannedValue = e.target.value || bufferRef.current;
-                  console.log("Hidden input value from Enter:", scannedValue);
-                  
-                  // ตรวจสอบว่าเป็นการพิมพ์ธรรมดาหรือไม่
-                  const isManualTyping = !zebraScanner && !isHighSpeedInput();
-                  
-                  if (scannedValue && !isManualTyping) {
-                    processScannedData(scannedValue);
-                    e.target.value = '';
-                    bufferRef.current = '';
-                    jsonCompleteRef.current = false;
-                    scanStartTimeRef.current = null;
-                    typingSpeedRef.current = [];
-                  } else if (isManualTyping) {
-                    // แจ้งเตือนถ้าเป็นการพิมพ์ธรรมดา
-                    setScanningMessage("โปรดใช้เครื่องสแกน QR Code เท่านั้น");
-                    e.target.value = '';
-                    bufferRef.current = '';
-                  }
-                }
-              }}
-            />
-
             {/* Header */}
             <div className="bg-gradient-to-r from-indigo-600 via-blue-600 to-blue-800 px-6 py-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center">
                   <span className="material-symbols-outlined text-2xl text-white mr-3">
-                    {zebraScanner ? "barcode_scanner" : "qr_code_scanner"}
+                    barcode_scanner
                   </span>
                   <div>
                     <h2 className="text-lg font-bold text-white">
-                      {zebraScanner ? "Zebra DS22 Scanner" : "QR Code Scanner"}
+                      Zebra DS22 Scanner
                     </h2>
                     <p className="text-xs text-blue-100 mt-0.5">
-                      {zebraScanner 
-                        ? "ใช้เครื่องสแกนปืนยิงในการค้นหาข้อมูล" 
-                        : "ใช้เครื่องสแกน QR Code ในการค้นหาข้อมูล (ไม่สามารถพิมพ์ได้)"}
+                      ใช้เครื่องสแกนปืนยิงในการค้นหาข้อมูล
                     </p>
                   </div>
                 </div>
@@ -857,14 +652,57 @@ const HandheldScanner = ({
 
             {/* Content */}
             <div className="p-6">
+              {/* กล่องรับข้อมูล - มองเห็นได้แต่ไม่เน้นให้เห็นชัด */}
+              <input
+                ref={inputRef}
+                type="text" 
+                className="w-full px-4 py-3 border border-blue-200 rounded-xl text-gray-700 mb-4 focus:outline-none focus:ring-2 focus:ring-blue-400"
+                placeholder="คลิกที่นี่เพื่อใช้งานเครื่องสแกน"
+                value={inputValue}
+                onFocus={() => setIsScanButtonActive(true)}
+                onChange={(e) => {
+                  // อัพเดทค่าใน state
+                  const newValue = e.target.value;
+                  setInputValue(newValue);
+                  
+                  // อัพเดท UI เพื่อให้คนเห็นว่ามีการเปลี่ยนแปลง
+                  setLastScan(newValue);
+                  
+                  // บันทึกเวลาล่าสุดที่ได้รับข้อมูล
+                  lastInputTimeRef.current = Date.now();
+                  
+                  // ตรวจสอบเพื่อประมวลผลอัตโนมัติเมื่อข้อมูลหยุดการเปลี่ยนแปลง
+                  checkInputStable(newValue);
+                }}
+                onKeyDown={(e) => {
+                  // เมื่อกด Enter
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    
+                    if (inputValue) {
+                      console.log("Processing on Enter:", inputValue);
+                      processScannedData(inputValue);
+                    }
+                  }
+                  
+                  // เมื่อกด Tab (บางเครื่อง Zebra ส่ง Tab)
+                  if (e.key === 'Tab') {
+                    e.preventDefault();
+                    
+                    if (inputValue) {
+                      console.log("Processing on Tab:", inputValue);
+                      processScannedData(inputValue);
+                    }
+                  }
+                }}
+              />
+
               <div className="text-center space-y-4">
                 <div className={`w-16 h-16 mx-auto rounded-full flex items-center justify-center
                   ${isScanning ? 'bg-blue-100 animate-pulse' : 'bg-blue-50'}`}>
                   <span className={`material-symbols-outlined text-3xl text-blue-600
                     ${isScanning ? 'animate-spin' : ''}`}>
-                    {isScanning 
-                      ? "hourglass_top" 
-                      : (zebraScanner ? "barcode_scanner" : "qr_code_scanner")}
+                    {isScanning ? "hourglass_top" : "barcode_scanner"}
                   </span>
                 </div>
 
@@ -873,10 +711,7 @@ const HandheldScanner = ({
                     {isScanning ? "กำลังประมวลผล" : "พร้อมรับข้อมูล"}
                   </h3>
                   <p className="text-sm text-gray-500">
-                    {scanningMessage ||
-                      (zebraScanner
-                        ? "กรุณากดปุ่มสแกนและใช้เครื่องสแกน Zebra DS22 ในการอ่านข้อมูล"
-                        : "กรุณากดปุ่มสแกนและใช้เครื่องสแกน QR Code ในการอ่านข้อมูล (ไม่สามารถพิมพ์ได้)")}
+                    {scanningMessage || "กดปุ่มสแกนและใช้ปืนยิง Zebra DS22 ในการอ่านข้อมูล"}
                   </p>
                 </div>
 
@@ -894,32 +729,6 @@ const HandheldScanner = ({
                   </div>
                 )}
 
-                {/* ตัวเลือกโหมด Zebra Scanner */}
-                <div className="pt-2">
-                  <label className="inline-flex items-center">
-                    <input
-                      type="checkbox"
-                      checked={zebraScanner}
-                      onChange={(e) => setZebraScanner(e.target.checked)}
-                      className="form-checkbox h-4 w-4 text-blue-600 rounded"
-                    />
-                    <span className="ml-2 text-sm text-gray-700">ใช้เครื่องสแกน Zebra DS22</span>
-                  </label>
-                </div>
-
-                {/* ตัวเลือกไม่แสดง Error */}
-                <div className="pt-2">
-                  <label className="inline-flex items-center">
-                    <input
-                      type="checkbox"
-                      checked={suppressErrors}
-                      onChange={(e) => setSuppressErrors(e.target.checked)}
-                      className="form-checkbox h-4 w-4 text-blue-600 rounded"
-                    />
-                    <span className="ml-2 text-sm text-gray-700">ไม่แสดงข้อความแจ้งเตือน Error</span>
-                  </label>
-                </div>
-
                 {/* Scan Button */}
                 <div className="pt-4 flex justify-center">
                   <button
@@ -933,7 +742,7 @@ const HandheldScanner = ({
                       disabled:opacity-50 disabled:cursor-not-allowed`}
                   >
                     <span className="material-symbols-outlined text-2xl">
-                      {zebraScanner ? "barcode_scanner" : "qr_code_scanner"}
+                      barcode_scanner
                     </span>
                     <span className="font-medium">
                       {isScanButtonActive ? 'กำลังสแกน...' : 'เริ่มสแกน'}
@@ -945,12 +754,13 @@ const HandheldScanner = ({
                   <div className="p-4 bg-blue-50 rounded-xl">
                     <div className="text-sm text-blue-700">
                       <p className="font-medium mb-1">
-                        {zebraScanner 
-                          ? "กดปุ่มสแกนและใช้ปืนยิง Zebra DS22" 
-                          : "กดปุ่มสแกนและใช้เครื่องสแกน QR Code"}
+                        ใช้ปืนยิง Zebra DS22 สแกน QR Code หรือ Barcode
                       </p>
                       <p className="text-xs text-blue-600 mt-2">
-                        ระบบนี้รองรับเฉพาะการสแกน QR Code เท่านั้น ไม่สามารถพิมพ์เพื่อค้นหาได้
+                        คลิกที่กล่องข้อความด้านบนก่อนสแกนเพื่อโฟกัส
+                      </p>
+                      <p className="text-xs text-blue-600 mt-2 text-center italic">
+                        ข้อมูลจะถูกส่งอัตโนมัติหลังสแกน
                       </p>
                     </div>
                   </div>

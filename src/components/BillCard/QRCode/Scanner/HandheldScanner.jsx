@@ -11,6 +11,8 @@ const HandheldScanner = ({
   bills,
   onSelectSubInv,
   selectedSubInv,
+  isLoading: parentLoading,
+  error: parentError,
 }) => {
   // States
   const [isScanning, setIsScanning] = useState(false);
@@ -92,7 +94,7 @@ const HandheldScanner = ({
     setPreviousSubInv(selectedSubInv);
   }, [selectedSubInv]);
 
-  // Validate และแปลง QR data
+  // Validate และแปลง QR data - ปรับปรุงเพื่อรองรับ Part Number ที่มีช่องว่าง
   const validateQrData = (data) => {
     try {
       if (!data) {
@@ -149,6 +151,23 @@ const HandheldScanner = ({
       } else {
         // ถ้าไม่ใช่ JSON ใช้ข้อมูลเป็น part number โดยตรง
         partNumber = trimmedData;
+        
+        // ใช้ regular expression ตรวจสอบรูปแบบที่อาจเป็น Part Number ที่มีช่องว่าง
+        const partWithSpacePatterns = [
+          /^\d+-\d+\s\w+$/, // เช่น "13272-1044 1A"
+          /^\d+\s\d+$/, // เช่น "1234 5678"
+          /^\w+-\w+\s\w+$/, // เช่น "ABC-123 XY"
+          /^\w+\s\w+\s\w+$/ // เช่น "ABC DEF GHI"
+        ];
+        
+        // ตรวจสอบว่าข้อมูลตรงกับรูปแบบใดรูปแบบหนึ่งหรือไม่
+        const isSpecialPartFormat = partWithSpacePatterns.some(pattern => pattern.test(trimmedData));
+        
+        if (isSpecialPartFormat) {
+          console.log(`Detected special part number format with space: "${trimmedData}"`);
+        } else if (trimmedData.includes(' ')) {
+          console.log(`Part number with space detected: "${trimmedData}"`);
+        }
       }
       
       // ถ้าไม่มีข้อมูลที่จำเป็น
@@ -169,7 +188,7 @@ const HandheldScanner = ({
     }
   };
 
-  // ฟังก์ชันประมวลผลข้อมูลที่สแกนได้
+  // ฟังก์ชันประมวลผลข้อมูลที่สแกนได้ - ปรับปรุงเพื่อรองรับ Part Number ที่มีช่องว่าง
   const processScannedData = async (input) => {
     if (!input || isProcessingRef.current) return;
     
@@ -256,149 +275,234 @@ const HandheldScanner = ({
       
       setScanningMessage(`กำลังค้นหาข้อมูล ${qrData.partNumber || 'ไม่ระบุ'}...`);
       
-      // เตรียมพารามิเตอร์สำหรับการค้นหา
-      const searchParam = qrData.inventory_item_id || qrData.partNumber;
-      let encodedSearchParam = searchParam;
-      
-      // ถ้ามีภาษาไทยหรือเป็น JSON ต้องระวังการเข้ารหัส
-      if (typeof searchParam === 'string') {
-        if (/[\u0E00-\u0E7F]/.test(searchParam)) {
-          encodedSearchParam = encodeURIComponent(searchParam);
-        }
+      // ----- ส่วนที่แก้ไข: เลือกใช้ partNumber หรือ inventory_item_id -----
+      // ให้ความสำคัญกับ partNumber ที่มีช่องว่างเป็นอันดับแรก
+      let searchParam;
+      if (qrData.partNumber && qrData.partNumber.includes(' ')) {
+        // ถ้าเป็น part number ที่มีช่องว่าง ให้ใช้ค่านี้เป็นอันดับแรก
+        searchParam = qrData.partNumber;
+        console.log(`Using part number with spaces: "${qrData.partNumber}" for search`);
+      } else {
+        // กรณีอื่นๆ ใช้ inventory_item_id ก่อน ถ้ามี
+        searchParam = qrData.inventory_item_id || qrData.partNumber;
+        console.log(`Using regular search parameter: "${searchParam}"`);
       }
       
-      console.log(`Searching with: subinventory=${qrData.subinventory || selectedSubInv}, searchParam=${encodedSearchParam}`);
+      // บันทึก log เพื่อตรวจสอบ
+      console.log(`Searching for part with parameter value: "${searchParam}"`);
       
-      // ค้นหาข้อมูล bill cards ด้วย directAccessService
-      let billDetails = [];
       try {
         setScanningMessage(`กำลังค้นหาข้อมูล...`);
-        billDetails = await directAccessService.getBillCards(
-          qrData.subinventory || selectedSubInv,
-          encodedSearchParam
+        
+        // สร้าง options สำหรับ retry logic
+        const options = {
+          retries: 2,
+          retryDelay: 1000
+        };
+        
+        // เรียกใช้ directAccessService ผ่าน fetchWithRetry
+        let billDetails = await directAccessService.fetchWithRetry(
+          () => directAccessService.getBillCards(
+            qrData.subinventory || selectedSubInv,
+            searchParam 
+          ),
+          options.retries,
+          options.retryDelay
         );
+        
         console.log("API response:", billDetails?.length || 0, "records");
+        
+        // ตรวจสอบว่าเป็นข้อมูล fallback หรือไม่
+        const isFallbackData = billDetails.length === 1 && billDetails[0]._isOfflineData === true;
+
+        if (isFallbackData) {
+          console.log("Received fallback data. Trying alternative search method...");
+          
+          // ทดลองใช้วิธีค้นหาแบบอื่น
+          // ถ้าเราใช้ partNumber แล้วไม่ได้ผล ให้ลองใช้ inventory_item_id
+          // หรือถ้าเราใช้ inventory_item_id แล้วไม่ได้ผล ให้ลองใช้ partNumber
+          let alternativeParam;
+          
+          if (searchParam === qrData.partNumber && qrData.inventory_item_id) {
+            alternativeParam = qrData.inventory_item_id;
+            console.log(`Trying with inventory_item_id: ${alternativeParam}`);
+          } else if (searchParam === qrData.inventory_item_id && qrData.partNumber) {
+            alternativeParam = qrData.partNumber;
+            console.log(`Trying with partNumber: ${alternativeParam}`);
+          }
+          
+          if (alternativeParam) {
+            try {
+              setScanningMessage(`ค้นหาด้วยวิธีอื่น...`);
+              
+              // ลองค้นหาด้วยวิธีอื่น
+              billDetails = await directAccessService.fetchWithRetry(
+                () => directAccessService.getBillCards(
+                  qrData.subinventory || selectedSubInv,
+                  alternativeParam
+                ),
+                options.retries,
+                options.retryDelay
+              );
+              
+              console.log("Alternative search resulted in:", billDetails?.length || 0, "records");
+              
+              // ตรวจสอบอีกครั้งว่ายังเป็น fallback data หรือไม่
+              // const isStillFallback = billDetails.length === 1 && billDetails[0]._isOfflineData === true;
+              
+              // if (isStillFallback) {
+              //   console.log("Alternative search also failed");
+                
+              //   // แสดงข้อความแจ้งเตือนผู้ใช้ว่าการค้นหาล้มเหลว
+              //   await Swal.fire({
+              //     title: "ไม่พบข้อมูล",
+              //     html: `ไม่สามารถค้นหาข้อมูล Part Number ที่มีช่องว่างได้<br><br>
+              //           <strong>Part Number:</strong> ${qrData.partNumber || 'ไม่ระบุ'}<br>
+              //           <strong>Inventory ID:</strong> ${qrData.inventory_item_id || 'ไม่ระบุ'}<br>
+              //           <strong>Subinventory:</strong> ${qrData.subinventory || selectedSubInv}`,
+              //     icon: "warning",
+              //     confirmButtonText: "ตกลง"
+              //   });
+              // }
+            } catch (error) {
+              console.error("Alternative search error:", error);
+            }
+          }
+        }
+        
+        // ดึงข้อมูล inventory เพิ่มเติม
+        let inventoryItems = [];
+        try {
+          setScanningMessage(`กำลังดึงข้อมูลสต็อค...`);
+          
+          const inventories = await inventoryService.fetchInventories();
+          const currentInventory = inventories.find(inv => 
+            inv.secondary_inventory === (qrData.subinventory || selectedSubInv)
+          );
+          
+          if (currentInventory?.inventory_items) {
+            inventoryItems = currentInventory.inventory_items;
+            console.log(`Found ${inventoryItems.length} inventory items`);
+          }
+        } catch (error) {
+          console.error("Inventory fetch error:", error);
+        }
+
+        // ประมวลผลและแสดงข้อมูล
+        if (billDetails && billDetails.length > 0 && !billDetails[0]._isOfflineData) {
+          console.log("Found bill details:", billDetails.length, "records");
+          const sortedBills = [...billDetails].sort((a, b) => {
+            const dateA = new Date(a.M_DATE || 0);
+            const dateB = new Date(b.M_DATE || 0);
+            return dateB - dateA;
+          });
+
+          // ค้นหาข้อมูล stock จาก inventoryItems
+          const matchingInventoryItem = inventoryItems.find(item => 
+            item.part_number === sortedBills[0].M_PART_NUMBER || 
+            item.inventory_item_id === sortedBills[0].inventory_item_id
+          );
+          
+          // อัพเดทค่า stk_qty ถ้าจำเป็น
+          if (matchingInventoryItem && 
+              (sortedBills[0].stk_qty === "0" || 
+              !sortedBills[0].stk_qty || 
+              parseFloat(sortedBills[0].stk_qty) === 0)) {
+            console.log("Updating stk_qty from inventory:", matchingInventoryItem.stk_qty);
+            
+            sortedBills.forEach(bill => {
+              bill.stk_qty = matchingInventoryItem.stk_qty || bill.stk_qty || "0";
+            });
+          }
+
+          const billData = {
+            ...sortedBills[0],
+            allRelatedBills: sortedBills,
+            relatedBills: sortedBills,
+            totalQty: billDetails.reduce(
+              (sum, bill) => sum + Number(bill.M_QTY || 0),
+              0
+            ),
+            billCount: billDetails.length,
+            latestDate: new Date(sortedBills[0].M_DATE || new Date()),
+            _qrData: qrData,
+            _inventoryData: matchingInventoryItem || null
+          };
+
+          // สั่นให้รู้ว่าพบข้อมูล
+          if (navigator.vibrate) navigator.vibrate(200);
+          setScanningMessage("พบข้อมูล!");
+
+          // แสดงข้อมูล
+          console.log('Setting selected bill:', billData);
+          setSelectedBill(billData);
+          setShowDetailPopup(true);
+        } else {
+          // กรณีไม่พบข้อมูล แต่ยังมี inventory data
+          console.log("No bill details found, checking inventory data");
+          
+          const matchingInventoryItem = inventoryItems.find(item => 
+            item.part_number === qrData.partNumber || 
+            item.inventory_item_id === qrData.inventory_item_id
+          );
+          
+          let stockQty = "0";
+          if (matchingInventoryItem) {
+            console.log("Found matching inventory item:", matchingInventoryItem);
+            stockQty = matchingInventoryItem.stk_qty || "0";
+          }
+          
+          // สร้างข้อมูลเปล่าเพื่อแสดง
+          const emptyBillData = {
+            M_PART_NUMBER: qrData.partNumber || input.toString().trim(),
+            M_PART_DESCRIPTION: matchingInventoryItem?.part_description || 
+              `Part ${qrData.partNumber}`,
+            M_SUBINV: qrData.subinventory || selectedSubInv,
+            M_DATE: new Date().toISOString(),
+            M_QTY: "0",
+            begin_qty: "0",
+            stk_qty: stockQty,
+            M_ID: "-",
+            TRANSACTION_TYPE_NAME: "-",
+            M_USER_NAME: "-",
+            inventory_item_id: qrData.inventory_item_id || (matchingInventoryItem?.inventory_item_id || ""),
+            relatedBills: [],
+            allRelatedBills: [],
+            totalQty: 0,
+            billCount: 0,
+            latestDate: new Date(),
+            _isEmptyData: true,
+            _qrData: qrData,
+            _inventoryData: matchingInventoryItem || null
+          };
+
+          console.log("Created empty bill data with stk_qty:", emptyBillData.stk_qty);
+          
+          // สั่นแจ้งเตือนแบบอื่น (สั้นๆ 3 ครั้ง)
+          if (navigator.vibrate) navigator.vibrate([100, 100, 100]);
+
+          // แสดงข้อมูลว่าง
+          setScanningMessage("ไม่พบข้อมูลการเคลื่อนไหว");
+          setSelectedBill(emptyBillData);
+          setShowDetailPopup(true);
+        }
       } catch (error) {
         console.error("API error:", error);
-        billDetails = [];
-      }
-      
-      // ดึงข้อมูล inventory เพิ่มเติม
-      let inventoryItems = [];
-      try {
-        setScanningMessage(`กำลังดึงข้อมูลสต็อค...`);
         
-        const inventories = await inventoryService.fetchInventories();
-        const currentInventory = inventories.find(inv => 
-          inv.secondary_inventory === (qrData.subinventory || selectedSubInv)
-        );
-        
-        if (currentInventory?.inventory_items) {
-          inventoryItems = currentInventory.inventory_items;
-          console.log(`Found ${inventoryItems.length} inventory items`);
-        }
-      } catch (error) {
-        console.error("Inventory fetch error:", error);
-      }
-
-      // ประมวลผลและแสดงข้อมูล
-      if (billDetails && billDetails.length > 0) {
-        console.log("Found bill details:", billDetails.length, "records");
-        const sortedBills = [...billDetails].sort((a, b) => {
-          const dateA = new Date(a.M_DATE || 0);
-          const dateB = new Date(b.M_DATE || 0);
-          return dateB - dateA;
+        // แสดง error และข้อมูลเพิ่มเติมเกี่ยวกับความผิดพลาด
+        await Swal.fire({
+          title: "เกิดข้อผิดพลาด",
+          html: `ไม่สามารถค้นหาข้อมูลได้<br><br>
+                <strong>Part Number:</strong> ${qrData.partNumber || 'ไม่ระบุ'}<br>
+                <strong>Subinventory:</strong> ${qrData.subinventory || selectedSubInv}<br>
+                <strong>ข้อผิดพลาด:</strong> ${error.message}`,
+          icon: "error",
+          confirmButtonText: "ตกลง"
         });
-
-        // ค้นหาข้อมูล stock จาก inventoryItems
-        const matchingInventoryItem = inventoryItems.find(item => 
-          item.part_number === sortedBills[0].M_PART_NUMBER || 
-          item.inventory_item_id === sortedBills[0].inventory_item_id
-        );
         
-        // อัพเดทค่า stk_qty ถ้าจำเป็น
-        if (matchingInventoryItem && 
-            (sortedBills[0].stk_qty === "0" || 
-             !sortedBills[0].stk_qty || 
-             parseFloat(sortedBills[0].stk_qty) === 0)) {
-          console.log("Updating stk_qty from inventory:", matchingInventoryItem.stk_qty);
-          
-          sortedBills.forEach(bill => {
-            bill.stk_qty = matchingInventoryItem.stk_qty || bill.stk_qty || "0";
-          });
-        }
-
-        const billData = {
-          ...sortedBills[0],
-          allRelatedBills: sortedBills,
-          relatedBills: sortedBills,
-          totalQty: billDetails.reduce(
-            (sum, bill) => sum + Number(bill.M_QTY || 0),
-            0
-          ),
-          billCount: billDetails.length,
-          latestDate: new Date(sortedBills[0].M_DATE || new Date()),
-          _qrData: qrData,
-          _inventoryData: matchingInventoryItem || null
-        };
-
-        // สั่นให้รู้ว่าพบข้อมูล
-        if (navigator.vibrate) navigator.vibrate(200);
-        setScanningMessage("พบข้อมูล!");
-
-        // แสดงข้อมูล
-        console.log('Setting selected bill:', billData);
-        setSelectedBill(billData);
-        setShowDetailPopup(true);
-      } else {
-        // กรณีไม่พบข้อมูล แต่ยังมี inventory data
-        console.log("No bill details found, checking inventory data");
-        
-        const matchingInventoryItem = inventoryItems.find(item => 
-          item.part_number === qrData.partNumber || 
-          item.inventory_item_id === qrData.inventory_item_id
-        );
-        
-        let stockQty = "0";
-        if (matchingInventoryItem) {
-          console.log("Found matching inventory item:", matchingInventoryItem);
-          stockQty = matchingInventoryItem.stk_qty || "0";
-        }
-        
-        // สร้างข้อมูลเปล่าเพื่อแสดง
-        const emptyBillData = {
-          M_PART_NUMBER: qrData.partNumber || input.toString().trim(),
-          M_PART_DESCRIPTION: matchingInventoryItem?.part_description || 
-            `Part ${qrData.partNumber}`,
-          M_SUBINV: qrData.subinventory || selectedSubInv,
-          M_DATE: new Date().toISOString(),
-          M_QTY: "0",
-          begin_qty: "0",
-          stk_qty: stockQty,
-          M_ID: "-",
-          TRANSACTION_TYPE_NAME: "-",
-          M_USER_NAME: "-",
-          inventory_item_id: qrData.inventory_item_id || (matchingInventoryItem?.inventory_item_id || ""),
-          relatedBills: [],
-          allRelatedBills: [],
-          totalQty: 0,
-          billCount: 0,
-          latestDate: new Date(),
-          _isEmptyData: true,
-          _qrData: qrData,
-          _inventoryData: matchingInventoryItem || null
-        };
-
-        console.log("Created empty bill data with stk_qty:", emptyBillData.stk_qty);
-        
-        // สั่นแจ้งเตือนแบบอื่น (สั้นๆ 3 ครั้ง)
-        if (navigator.vibrate) navigator.vibrate([100, 100, 100]);
-
-        // แสดงข้อมูลว่าง
-        setScanningMessage("ไม่พบข้อมูลการเคลื่อนไหว");
-        setSelectedBill(emptyBillData);
-        setShowDetailPopup(true);
+        setScanningMessage("เกิดข้อผิดพลาดในการค้นหาข้อมูล");
       }
+
     } catch (error) {
       console.error("Processing error:", error);
       
@@ -544,6 +648,46 @@ const HandheldScanner = ({
 
   // ไม่แสดงถ้าไม่ได้เปิดหรือไม่มี detail popup
   if (!isOpen && !showDetailPopup) return null;
+
+  // แสดงข้อความ error จาก parent
+  if (parentError) {
+    return (
+      <div className="fixed inset-0 z-50">
+        <div className="absolute inset-0 bg-gray-900/45 transition-opacity" onClick={handleClose} />
+        <div className="flex items-center justify-center min-h-screen p-4">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md">
+            <div className="flex items-center text-red-500 mb-4">
+              <span className="material-symbols-outlined mr-2">error</span>
+              <h2 className="text-xl font-bold">เกิดข้อผิดพลาด</h2>
+            </div>
+            <p className="mb-4 text-gray-700">{parentError}</p>
+            <button
+              onClick={handleClose}
+              className="w-full py-2 px-4 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+            >
+              ตกลง
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // แสดง loading จาก parent
+  if (parentLoading) {
+    return (
+      <div className="fixed inset-0 z-50">
+        <div className="absolute inset-0 bg-gray-900/45 transition-opacity" />
+        <div className="flex items-center justify-center min-h-screen p-4">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md text-center">
+            <Loader2 className="w-10 h-10 animate-spin mx-auto mb-4 text-blue-600" />
+            <p className="text-lg font-medium text-gray-800">กำลังโหลดข้อมูล...</p>
+            <p className="text-sm text-gray-600 mt-2">กรุณารอสักครู่</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <>

@@ -201,7 +201,7 @@ const QrCodePopup = ({ bills, onClose }) => {
               color: #000;
               word-break: break-all;
               word-wrap: break-word;
-              font-size: 16px; /* เพิ่มขนาดฟอนต์ของข้อมูลทั่วไป */
+              font-size: 18px; /* เพิ่มขนาดฟอนต์ของข้อมูลทั่วไป */
             }
 
             /* ปรับ Part Number ให้ใหญ่และเด่นมากขึ้น */

@@ -30,7 +30,7 @@ export const PartInfo = ({
         {/* Stock Qty */}
         <div className="p-4 hover:bg-gray-50 transition-colors">
           <label className="text-sm font-medium text-gray-500">
-            Stock Qty (จากระบบ)
+           Balance ( Oracle )
           </label>
           <p className="mt-1 font-semibold flex items-center">
             <div

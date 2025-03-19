@@ -77,7 +77,7 @@ export const InventoryRecord = ({ item }) => {
       <div className="grid grid-cols-3 gap-2">
         {/* จำนวนรับ */}
         <div>
-          <span className="text-xs text-gray-500 block mb-1">จำนวนรับ</span>
+          <span className="text-xs text-gray-500 block mb-1">IN</span>
           {Number(item.quantity_sold) > 0 ? (
             <div className="inline-flex items-center px-2 py-1 rounded-lg bg-green-50 text-xs font-medium">
               <span className="material-symbols-outlined text-green-500 text-sm mr-1">
@@ -94,7 +94,7 @@ export const InventoryRecord = ({ item }) => {
 
         {/* จำนวนจ่าย */}
         <div>
-          <span className="text-xs text-gray-500 block mb-1">จำนวนจ่าย</span>
+          <span className="text-xs text-gray-500 block mb-1">OUT</span>
           {Number(item.quantity_sold) < 0 ? (
             <div className="inline-flex items-center px-2 py-1 rounded-lg bg-red-50 text-xs font-medium">
               <span className="material-symbols-outlined text-red-500 text-sm mr-1">
@@ -111,7 +111,7 @@ export const InventoryRecord = ({ item }) => {
 
         {/* คงเหลือ */}
         <div>
-          <span className="text-xs text-gray-500 block mb-1">คงเหลือ</span>
+          <span className="text-xs text-gray-500 block mb-1">Balance</span>
           <div
             className={`inline-flex items-center px-2 py-1 rounded-lg text-xs font-medium ${
               item.quantity_remaining === 0
@@ -137,8 +137,14 @@ export const InventoryRecord = ({ item }) => {
       <div className="flex items-center justify-between mt-3">
         <div className="flex items-center gap-1 text-indigo-600 px-2 py-1 bg-indigo-50 rounded-lg text-xs">
           <span className="material-symbols-outlined text-sm">description</span>
-          <span className="truncate max-w-[120px]">
+          <span className="">
             {getDocumentReference(item)}
+          </span>
+        </div>
+        <div className="flex items-center gap-1 text-blue-600 px-2 py-1 bg-blue-50 rounded-lg text-xs">
+          <span className="material-symbols-outlined text-sm">description</span>
+          <span className="">
+            {item.transaction_type}
           </span>
         </div>
 

@@ -211,7 +211,7 @@ export const InventoryTable = ({
                   onClick={handleSortClick}
                   className="w-full flex items-center justify-between group hover:bg-gray-50 px-2 py-1 rounded-lg transition-colors"
                 >
-                  <span className="text-sm text-gray-600">วันที่</span>
+                  <span className="text-sm text-gray-600">Date</span>
                   <span className="material-symbols-outlined text-gray-400 text-xl group-hover:text-blue-500">
                     {effectiveSortDirection === "asc"
                       ? "stat_1"
@@ -220,14 +220,14 @@ export const InventoryTable = ({
                 </button>
               </th>
               <th className="p-3 text-center">
-                <span className="text-sm text-gray-600">จำนวนรับ</span>
+                <span className="text-sm text-gray-600">IN</span>
               </th>
               <th className="p-3 text-center">
-                <span className="text-sm text-gray-600">จำนวนจ่าย</span>
+                <span className="text-sm text-gray-600">OUT</span>
               </th>
               <th className="p-3 text-left">
                 <span className="text-sm text-gray-600">
-                  คงเหลือ
+                Balance
                   {/* {isFiltered && (
                     <span className="ml-1 px-1 py-0.5 bg-blue-100 text-blue-600 text-xs rounded-full">
                       เฉพาะที่แสดง
@@ -236,10 +236,13 @@ export const InventoryTable = ({
                 </span>
               </th>
               <th className="p-3 text-left">
-                <span className="text-sm text-gray-600">เอกสารเลขที่</span>
+                <span className="text-sm text-gray-600">Doc No.</span>
               </th>
               <th className="p-3 text-left">
-                <span className="text-sm text-gray-600">ผู้บันทึก</span>
+                <span className="text-sm text-gray-600">Doc Type.</span>
+              </th>
+              <th className="p-3 text-left">
+                <span className="text-sm text-gray-600">Created By</span>
               </th>
             </tr>
           </thead>
@@ -313,6 +316,14 @@ export const InventoryTable = ({
                         description
                       </span>
                       <span>{getDocumentReference(item)}</span>
+                    </div>
+                  </td>
+                  <td className="p-3">
+                    <div className="inline-flex items-center px-2.5 py-1 rounded-lg bg-blue-50 text-xs font-medium text-blue-600">
+                      <span className="material-symbols-outlined text-sm mr-1">
+                        description
+                      </span>
+                      <span>{item.transaction_type}</span>
                     </div>
                   </td>
                   <td className="p-3">

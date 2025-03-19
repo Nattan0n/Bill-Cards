@@ -259,7 +259,7 @@ const BillTable = ({ bills, startingIndex = 0, onSelectedRowsChange, isLoading =
                       <th className="p-4 text-sm font-semibold text-left text-gray-600 uppercase">Part No.</th>
                       <th className="p-4 text-sm font-semibold text-left text-gray-600 uppercase">Part Name</th>
                       <th className="p-4 text-sm font-semibold text-left text-gray-600 uppercase">SubInventory</th>
-                      <th className="p-4 text-sm font-semibold text-left text-gray-600 uppercase">Stock Qty</th>
+                      <th className="p-4 text-sm font-semibold text-left text-gray-600 uppercase">Balance</th>
                       <th className="p-4 text-sm font-semibold text-left text-gray-600 uppercase">Actions</th>
                     </tr>
                   </thead>

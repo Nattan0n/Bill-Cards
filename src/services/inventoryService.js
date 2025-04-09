@@ -3,7 +3,7 @@ import _ from 'lodash';
 
 // สร้าง axios instance
 const api = axios.create({
-  baseURL: 'http://129.200.6.52/laravel_oracle_api/public',
+  baseURL: 'http://129.200.6.51/laravel_oracle_api/public',
   // baseURL: 'http://129.200.6.51/laravel_oracle_api/public',
   headers: {
     'Content-Type': 'application/json',

@@ -3,7 +3,7 @@ import axios from 'axios';
 
 // สร้าง instance สำหรับเรียก API โดยตรงเหมือนเว็บ
 const directApi = axios.create({
-  baseURL: 'http://129.200.6.52/laravel_oracle_api/public', // เปลี่ยนเป็น API ใหม่
+  baseURL: 'http://129.200.6.51/laravel_oracle_api/public', // เปลี่ยนเป็น API ใหม่
   headers: {
     'Content-Type': 'application/json; charset=UTF-8',
     'Accept': 'application/json; charset=UTF-8'

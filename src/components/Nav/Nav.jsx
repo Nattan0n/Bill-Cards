@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { NavLink } from "react-router-dom";
 import axios from "axios";
-import LogoIcon from "../../assets/images/IPlan_Logo.png";
+import LogoIcon from "../../assets/images/thumbnail_image001.png";
 import { authService } from "../../services/authService";
 
 const Navigation = ({ user, roles, onLogout }) => {
@@ -64,7 +64,8 @@ const Navigation = ({ user, roles, onLogout }) => {
                 <img
                   src={LogoIcon}
                   alt="Logo"
-                  className="block h-15 w-auto fill-current text-gray-800"
+                  className="block h-auto fill-current text-gray-800"
+                  style={{width:120}}
                 />
               </button>
             </div>

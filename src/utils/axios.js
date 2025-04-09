@@ -3,7 +3,7 @@ import axios from 'axios';
 
 // สร้าง instance สำหรับ API ที่ server 129.200.6.51 (inventory API)
 export const inventoryApi = axios.create({
-    baseURL: 'http://129.200.6.52/laravel_oracle_api/public',
+    baseURL: 'http://129.200.6.51/laravel_oracle_api/public',
     // baseURL: 'http://129.200.6.51/laravel_oracle_api/public',
     headers: {
         'Content-Type': 'application/json',
@@ -14,7 +14,7 @@ export const inventoryApi = axios.create({
 
 // สร้าง instance สำหรับ API ที่ server 129.200.6.52 (bill card API)
 export const oracleApi = axios.create({
-    baseURL: 'http://129.200.6.52/laravel_oracle_api/public',
+    baseURL: 'http://129.200.6.51/laravel_oracle_api/public',
     headers: {
         'Content-Type': 'application/json',
         'Accept': 'application/json',

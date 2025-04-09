@@ -75,27 +75,86 @@ class BillCardService {
     return requestPromise;
   }
 
+  // async fetchWithRetry(cacheKey, subInventory, itemId, signal, attempt = 1) {
+  //   const MAX_ATTEMPTS = 3;
+  //   const RETRY_DELAY = 800; // ปรับเพิ่มเวลา delay ระหว่างการ retry
+  //   try {
+  //     const data = await this.fetchBillCards(subInventory, itemId, signal);
+      
+  //     if (data.length === 0 && attempt < MAX_ATTEMPTS) {
+  //       this.log('info', `Attempt ${attempt} returned no data, retrying...`);
+  //       await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
+  //       return this.fetchWithRetry(cacheKey, subInventory, itemId, signal, attempt + 1);
+  //     }
+      
+  //     this.updateCache(cacheKey, data);
+  //     return data;
+  //   } catch (error) {
+  //     if (attempt < MAX_ATTEMPTS) {
+  //       this.log('info', `Attempt ${attempt} failed, retrying...`);
+  //       await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
+  //       return this.fetchWithRetry(cacheKey, subInventory, itemId, signal, attempt + 1);
+  //     }
+      
+  //     // สร้างข้อมูลจำลองเมื่อเกิด error
+  //     this.log('warn', `All ${MAX_ATTEMPTS} attempts failed, using fallback data`);
+      
+  //     // สร้างข้อมูลจำลองสำหรับแสดงใน UI
+  //     const fallbackData = [{
+  //       M_PART_NUMBER: itemId,
+  //       M_PART_DESCRIPTION: `ข้อมูลออฟไลน์ - ${itemId || "ไม่ระบุ"}`,
+  //       M_SUBINV: subInventory,
+  //       M_DATE: new Date().toISOString(),
+  //       M_QTY: "0",
+  //       begin_qty: "0",
+  //       stk_qty: "0", // เพิ่มฟิลด์ stk_qty เข้าไปในข้อมูลจำลอง
+  //       TRANSACTION_TYPE_NAME: "OFFLINE MODE",
+  //       M_USER_NAME: "-",
+  //       M_SOURCE_REFERENCE: "-",
+  //       inventory_item_id: itemId,
+  //       _isOfflineData: true,
+  //       _errorType: error?.code || error?.response?.status || 'UNKNOWN',
+  //       _errorMessage: error?.message || "ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้"
+  //     }];
+      
+  //     // บันทึกข้อมูลจำลองเข้า cache
+  //     this.updateCache(cacheKey, fallbackData);
+      
+  //     return fallbackData;
+  //   }
+  // }
   async fetchWithRetry(cacheKey, subInventory, itemId, signal, attempt = 1) {
     const MAX_ATTEMPTS = 3;
+    const RETRY_DELAY = 800; // ปรับเพิ่มเวลา delay ระหว่างการ retry
+    
     try {
+      // ทำให้แน่ใจว่ามีการรอเวลาเล็กน้อยก่อนเริ่ม request แรก
+      if (attempt === 1) {
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
+      
       const data = await this.fetchBillCards(subInventory, itemId, signal);
       
       if (data.length === 0 && attempt < MAX_ATTEMPTS) {
         this.log('info', `Attempt ${attempt} returned no data, retrying...`);
-        await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
+        await new Promise(resolve => setTimeout(resolve, RETRY_DELAY * attempt));
         return this.fetchWithRetry(cacheKey, subInventory, itemId, signal, attempt + 1);
       }
       
       this.updateCache(cacheKey, data);
       return data;
     } catch (error) {
+      if (signal?.aborted) {
+        throw new Error('Request was aborted');
+      }
+      
       if (attempt < MAX_ATTEMPTS) {
-        this.log('info', `Attempt ${attempt} failed, retrying...`);
-        await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
+        this.log('info', `Attempt ${attempt} failed with error: ${error.message}, retrying...`);
+        await new Promise(resolve => setTimeout(resolve, RETRY_DELAY * attempt));
         return this.fetchWithRetry(cacheKey, subInventory, itemId, signal, attempt + 1);
       }
       
-      // สร้างข้อมูลจำลองเมื่อเกิด error
+      // สร้างข้อมูลจำลองเมื่อเกิด error หลังจากพยายามครบตามจำนวนครั้งที่กำหนด
       this.log('warn', `All ${MAX_ATTEMPTS} attempts failed, using fallback data`);
       
       // สร้างข้อมูลจำลองสำหรับแสดงใน UI
@@ -113,7 +172,8 @@ class BillCardService {
         inventory_item_id: itemId,
         _isOfflineData: true,
         _errorType: error?.code || error?.response?.status || 'UNKNOWN',
-        _errorMessage: error?.message || "ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้"
+        _errorMessage: error?.message || "ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้",
+        _attemptsMade: attempt
       }];
       
       // บันทึกข้อมูลจำลองเข้า cache

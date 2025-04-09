@@ -35,31 +35,38 @@ const BillCard = () => {
     setSelectedItemId
   } = useBillDataAPI("GP-DAIK");
 
-  // Load grouped inventories
-  useEffect(() => {
-    const loadGroupedInventories = async () => {
-      try {
-        setIsLoadingGrouped(true);
-        setError(null);
-        const data = await inventoryService.fetchInventories();
-        setGroupedInventories(data);
-
-        if (!selectedSubInv) {
-          const defaultGroup = data.find(group => group.secondary_inventory === "GP-DAIK");
-          if (defaultGroup) {
-            setSelectedSubInv("GP-DAIK");
-          }
-        }
-      } catch (error) {
-        console.error("Failed to load grouped inventories:", error);
-        setError("Failed to load grouped inventories");
-      } finally {
-        setIsLoadingGrouped(false);
+// BillCard.jsx - ส่วนของ useEffect สำหรับโหลดข้อมูล
+useEffect(() => {
+  const loadGroupedInventories = async () => {
+    try {
+      setIsLoadingGrouped(true);
+      setError(null);
+      // เพิ่ม delay เล็กน้อยเพื่อให้แน่ใจว่า component ได้ mount แล้ว
+      await new Promise(resolve => setTimeout(resolve, 100));
+      const data = await inventoryService.fetchInventories();
+      
+      if (!data || data.length === 0) {
+        throw new Error("ไม่สามารถโหลดข้อมูล Inventory ได้");
       }
-    };
+      
+      setGroupedInventories(data);
 
-    loadGroupedInventories();
-  }, []);
+      if (!selectedSubInv) {
+        const defaultGroup = data.find(group => group.secondary_inventory === "GP-DAIK");
+        if (defaultGroup) {
+          setSelectedSubInv("GP-DAIK");
+        }
+      }
+    } catch (error) {
+      console.error("Failed to load grouped inventories:", error);
+      setError("Failed to load grouped inventories");
+    } finally {
+      setIsLoadingGrouped(false);
+    }
+  };
+
+  loadGroupedInventories();
+}, []);
 
   // Optimized callbacks
   const handleSubInvChange = useCallback(async (subInv) => {

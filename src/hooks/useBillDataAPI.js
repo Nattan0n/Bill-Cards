@@ -25,9 +25,20 @@ export const useBillDataAPI = (initialSubInventory = "GP-DAIK") => {
             setLoading(true);
             setError(null);
 
+             // เพิ่ม delay เล็กน้อยเพื่อให้แน่ใจว่า API request ไม่ถูกยกเลิกเร็วเกินไป
+    await new Promise(resolve => setTimeout(resolve, 200));
+
             // Step 1: Get inventory data first (API 1)
             const inventories = await inventoryService.fetchInventories();
-            const currentInventory = inventories.find(inv => inv.secondary_inventory === subInventory);
+            if (!inventories || inventories.length === 0) {
+                throw new Error("ไม่สามารถดึงข้อมูล Inventory ได้");
+              }
+              
+              const currentInventory = inventories.find(inv => inv.secondary_inventory === subInventory);
+          
+              if (!currentInventory?.inventory_items) {
+                throw new Error(`ไม่พบรายการ items สำหรับ subinventory: ${subInventory}`);
+              }
 
             if (!currentInventory?.inventory_items) {
                 throw new Error(`No items found for subinventory: ${subInventory}`);

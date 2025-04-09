@@ -1,5 +1,5 @@
 // src/components/BillCard/SearchComponents/SubInventoryDropdown.jsx
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { HoverTooltip } from "./HoverTooltip";
 
 export const SubInventoryDropdown = ({
@@ -10,6 +10,7 @@ export const SubInventoryDropdown = ({
   inventories = [],
 }) => {
   const [isOpen, setIsOpen] = useState(false);
+  const [isClosing, setIsClosing] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [isHovered, setIsHovered] = useState(false);
   const dropdownRef = useRef(null);
@@ -36,11 +37,37 @@ export const SubInventoryDropdown = ({
     });
   }, [inventories, searchTerm, selectedSubInv]);
 
+  const toggleMenu = () => {
+    if (isOpen) {
+      setIsClosing(true);
+      setTimeout(() => {
+        setIsClosing(false);
+        setIsOpen(false);
+        setSearchTerm("");
+      }, 200);
+    } else {
+      setIsOpen(true);
+    }
+  };
+
   const handleSelectInventory = (inv) => {
     onSelectSubInv(inv.name);
-    setIsOpen(false);
-    setSearchTerm("");
+    toggleMenu();
   };
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target) && isOpen) {
+        toggleMenu();
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [isOpen]);
 
   return (
     <div className="relative" ref={dropdownRef}>
@@ -51,7 +78,7 @@ export const SubInventoryDropdown = ({
         onMouseLeave={() => setIsHovered(false)}
       >
         <button
-          onClick={() => setIsOpen(!isOpen)}
+          onClick={toggleMenu}
           className={`flex items-center px-4 py-2.5 ${
             selectedSubInv
               ? "bg-orange-100 text-orange-700"
@@ -79,7 +106,11 @@ export const SubInventoryDropdown = ({
 
       {/* Dropdown Menu */}
       {isOpen && (
-        <div className="absolute z-50 mt-2 w-96 bg-white rounded-xl shadow-lg border border-gray-200">
+        <div 
+          className={`absolute z-50 mt-2 w-96 bg-white rounded-xl shadow-lg border border-gray-200 transform transition-all duration-200 ease-in-out animate__animated animate__faster ${
+            isClosing ? "animate__zoomOut" : "animate__bounceIn"
+          }`}
+        >
           {/* Header */}
           <div className="p-3 border-b border-gray-100">
             <div className="flex items-center justify-between">
